@@ -7,6 +7,7 @@ export interface Profile {
   id: string;
   handle: string;
   display_name: string;
+  favourite_team: string | null;
   created_at: string;
 }
 
@@ -36,7 +37,8 @@ export async function getMyProfile(
  */
 export async function ensureProfile(
   supabase: SupabaseClient,
-  displayName: string
+  displayName: string,
+  favouriteTeam?: string | null
 ): Promise<Profile> {
   const name = displayName.trim();
   if (!name) throw new Error("Enter a display name.");
@@ -57,16 +59,30 @@ export async function ensureProfile(
   const existing = await getMyProfile(supabase);
   if (existing) return existing;
 
-  // 3. Insert, retrying on handle collision.
-  for (let attempt = 0; attempt < 5; attempt++) {
+  // 3. Insert, retrying on handle collision. The favourite_team column may
+  //    not be migrated yet — if so, retry without it (graceful degrade).
+  let includeFav = favouriteTeam != null;
+  for (let attempt = 0; attempt < 6; attempt++) {
     const handle = makeHandle(name);
+    const row: Record<string, unknown> = {
+      id: user.id,
+      handle,
+      display_name: name,
+    };
+    if (includeFav) row.favourite_team = favouriteTeam;
+
     const { data, error } = await supabase
       .from("profiles")
-      .insert({ id: user.id, handle, display_name: name })
+      .insert(row)
       .select("*")
       .single();
 
     if (!error) return data as Profile;
+    // favourite_team column not present yet → drop it and retry.
+    if (includeFav && /favourite_team/.test(error.message)) {
+      includeFav = false;
+      continue;
+    }
     if (error.code !== "23505") throw error; // not a unique violation
   }
   throw new Error("Could not generate a unique handle — try again.");
