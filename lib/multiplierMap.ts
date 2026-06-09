@@ -17,6 +17,7 @@
 import type { PickEntity } from "./types";
 import type { CategoryId } from "./constants";
 import { multiplierFromPct, tierFor, type Tier } from "./multipliers";
+import { marqueePop } from "./marquee";
 
 export interface PickStatRow {
   category: string;
@@ -56,10 +57,18 @@ function positionWeight(position?: string | null): number {
  * rank; players are additionally scaled by position. Clamped to a sane band.
  * This is fed straight into the §5 multiplier formula.
  */
+const PROXY_CEILING = 24; // top of the team-strength proxy (rank-1 forward)
+
 function defaultPopPct(e: PickEntity, teamRank: (id: string) => number): number {
+  // Recognised stars sit ABOVE the proxy ceiling so they sort first and carry
+  // favourite-like (low) multipliers — even on weaker teams (Haaland, Salah).
+  if (e.type === "player") {
+    const fame = marqueePop(e.name);
+    if (fame != null) return Math.min(40, PROXY_CEILING + fame);
+  }
   const rank = e.type === "team" ? e.rank ?? 50 : teamRank(e.entityId);
   const decay = e.type === "team" ? 0.7 : 0.5;
-  const base = 24 / Math.pow(Math.max(rank, 1), decay);
+  const base = PROXY_CEILING / Math.pow(Math.max(rank, 1), decay);
   const pop = e.type === "team" ? base : base * positionWeight(e.position);
   return Math.min(40, Math.max(0.1, pop));
 }

@@ -23,11 +23,20 @@ export default function Picker({
   const [q, setQ] = useState("");
   const isTeam = cat.type === "team";
   const query = q.toLowerCase();
-  const list = pool.filter(
-    (i) =>
-      i.name.toLowerCase().includes(query) ||
-      i.sub.toLowerCase().includes(query)
-  );
+  // Favourites first: order by popularity proxy (= multiplier pct, descending).
+  // Today that's team strength + position; once the cron fills pick_stats it
+  // becomes real pick-share, i.e. genuinely most-picked first. Ties keep the
+  // DB's alphabetical order (stable sort).
+  const list = pool
+    .filter(
+      (i) =>
+        i.name.toLowerCase().includes(query) ||
+        i.sub.toLowerCase().includes(query)
+    )
+    .sort(
+      (a, b) =>
+        (mults.get(b.entityId)?.pct ?? 0) - (mults.get(a.entityId)?.pct ?? 0)
+    );
 
   return (
     <div className="picker">
