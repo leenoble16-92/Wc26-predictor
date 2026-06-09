@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { toPng } from "html-to-image";
+import { useMemo, useState } from "react";
 import { CATEGORIES, type CategoryId, type Category } from "@/lib/constants";
 import type { PickEntity, PicksMap } from "@/lib/types";
 import type { MultMaps } from "@/lib/multiplierMap";
@@ -9,7 +8,6 @@ import type { RefData } from "@/lib/data";
 import { poolForCategory } from "@/lib/data";
 import Picker from "./Picker";
 import Confetti from "./Confetti";
-import ShareCard, { type ShareCardPick } from "./ShareCard";
 
 const ROTATIONS = [-2, 1.5, -1, 2, -1.5, 1];
 
@@ -37,7 +35,6 @@ export default function Album({
   const [celebrate, setCelebrate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
 
   const multFor = (cat: CategoryId, entityId: string) =>
     mults.get(cat)?.get(entityId);
@@ -76,35 +73,45 @@ export default function Album({
     )}\n\nBoldness ×${avgMult}\nReckon you know better?`;
   };
 
-  // The six picks shaped for the shareable card.
-  const cardPicks: ShareCardPick[] = CATEGORIES.map((c) => {
-    const p = picks[c.id];
-    const m = p ? multFor(c.id, p.entityId) : undefined;
-    return {
-      short: c.short,
-      flag: p?.flag ?? "🏳️",
-      name: p?.name ?? "—",
-      multiplier: m?.multiplier ?? 1,
-      tierCls: m?.tier.cls ?? "common",
-      tierLabel: m?.tier.label ?? "COMMON",
-    };
-  });
+  // URL of the server-rendered share image, carrying the six picks as params.
+  const shareImageUrl = () => {
+    const d = CATEGORIES.map((c) => {
+      const p = picks[c.id];
+      const m = p ? multFor(c.id, p.entityId) : undefined;
+      return {
+        s: c.short,
+        f: p?.flag ?? "🏳️",
+        n: p?.name ?? "—",
+        m: m?.multiplier ?? 1,
+        t: m?.tier.cls ?? "common",
+        l: m?.tier.label ?? "COMMON",
+      };
+    });
+    const q = new URLSearchParams({
+      name: displayName,
+      handle,
+      boldness: avgMult ?? "0.0",
+      d: JSON.stringify(d),
+    });
+    return `/api/og/share?${q.toString()}`;
+  };
 
-  // Snapshot the card to a PNG and open the native share sheet WITH the image
-  // (SPEC §6). Falls back to a text+link share, then to copying the link.
+  // Fetch the server-rendered PNG and open the native share sheet WITH the
+  // image (SPEC §6). Falls back to a text+link share, then to copying the link.
   const nativeShare = async () => {
     if (sharing) return;
     setSharing(true);
     const url = shareUrl();
     try {
       let file: File | null = null;
-      if (cardRef.current) {
-        const dataUrl = await toPng(cardRef.current, {
-          pixelRatio: 2,
-          cacheBust: true,
-        });
-        const blob = await (await fetch(dataUrl)).blob();
-        file = new File([blob], "called-it.png", { type: "image/png" });
+      try {
+        const res = await fetch(shareImageUrl());
+        if (res.ok) {
+          const blob = await res.blob();
+          file = new File([blob], "called-it.png", { type: "image/png" });
+        }
+      } catch {
+        /* image fetch failed — fall through to link share */
       }
 
       if (
@@ -119,7 +126,7 @@ export default function Album({
         await copyLink();
       }
     } catch {
-      /* user dismissed the sheet, or capture failed — no-op */
+      /* user dismissed the sheet — no-op */
     } finally {
       setSharing(false);
     }
@@ -262,13 +269,6 @@ export default function Album({
             <p className="footnote">
               Straight to the group chat. Receipts dated and timestamped.
             </p>
-            <ShareCard
-              ref={cardRef}
-              displayName={displayName}
-              handle={handle}
-              boldness={avgMult ?? "0.0"}
-              picks={cardPicks}
-            />
           </>
         )}
       </main>
