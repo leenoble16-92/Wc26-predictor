@@ -1,0 +1,199 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { CATEGORIES, type CategoryId, type Category } from "@/lib/constants";
+import type { PickEntity } from "@/lib/types";
+import type { EntityMultiplier } from "@/lib/multiplierMap";
+import type { RefData } from "@/lib/data";
+import { poolForCategory } from "@/lib/data";
+import Header from "./Header";
+import Picker from "./Picker";
+import Confetti from "./Confetti";
+
+const ROTATIONS = [-2, 1.5, -1, 2, -1.5, 1];
+
+export type PicksMap = Partial<Record<CategoryId, PickEntity>>;
+export type MultMaps = Map<CategoryId, Map<string, EntityMultiplier>>;
+
+export default function Album({
+  data,
+  mults,
+  picks,
+  onPick,
+}: {
+  data: RefData;
+  mults: MultMaps;
+  picks: PicksMap;
+  onPick: (category: CategoryId, entity: PickEntity) => void | Promise<void>;
+}) {
+  const [activeCat, setActiveCat] = useState<Category | null>(null);
+  const [lastPicked, setLastPicked] = useState<CategoryId | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const multFor = (cat: CategoryId, entityId: string) =>
+    mults.get(cat)?.get(entityId);
+
+  const doneCount = CATEGORIES.filter((c) => picks[c.id]).length;
+  const complete = doneCount === 6;
+
+  const avgMult = useMemo(() => {
+    const vals = CATEGORIES.filter((c) => picks[c.id]).map(
+      (c) => multFor(c.id, picks[c.id]!.entityId)?.multiplier ?? 1
+    );
+    return vals.length
+      ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
+      : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, mults]);
+
+  const lockIn = () => {
+    setLocked(true);
+    setCelebrate(true);
+    setTimeout(() => setCelebrate(false), 2600);
+  };
+
+  const shareText = () => {
+    const lines = CATEGORIES.map((c) => {
+      const p = picks[c.id];
+      const m = p ? multFor(c.id, p.entityId)?.multiplier : undefined;
+      return `${c.short}: ${p?.name ?? "—"}  ×${m ?? 1}`;
+    });
+    return `CALLED IT — World Cup 2026 🏆\n\n${lines.join(
+      "\n"
+    )}\n\nBoldness ×${avgMult}\nReckon you know better?`;
+  };
+
+  const copyShare = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  if (activeCat) {
+    const pool = poolForCategory(activeCat.id, data);
+    return (
+      <div className="app">
+        <Header />
+        <main className="main">
+          <Picker
+            cat={activeCat}
+            pool={pool}
+            mults={mults.get(activeCat.id) ?? new Map()}
+            selectedId={picks[activeCat.id]?.entityId ?? null}
+            onPick={(entity) => {
+              onPick(activeCat.id, entity);
+              setLastPicked(activeCat.id);
+              setActiveCat(null);
+            }}
+            onBack={() => setActiveCat(null)}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      {celebrate && <Confetti />}
+      <Header />
+      <main className="main">
+        <h1 className="headline">
+          SIX CALLS.
+          <br />
+          <span className="headline-accent">ONE SUMMER.</span>
+        </h1>
+        <p className="intro">
+          Collect your six. The fewer people who agree with you, the rarer the
+          sticker — and the more it&apos;s worth when you&apos;re right.
+        </p>
+
+        <div className="grid">
+          {CATEGORIES.map((c, i) => {
+            const p = picks[c.id];
+            const rot = ROTATIONS[i];
+            if (!p) {
+              return (
+                <button
+                  key={c.id}
+                  className="slot"
+                  style={{ ["--rot" as string]: `${rot}deg` }}
+                  onClick={() => !locked && setActiveCat(c)}
+                  disabled={locked}
+                >
+                  <span className="slot-num">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="slot-cat">{c.short}</span>
+                  <span className="slot-cta">TAP TO PICK</span>
+                </button>
+              );
+            }
+            const m = multFor(c.id, p.entityId);
+            const cls = m?.tier.cls ?? "common";
+            return (
+              <button
+                key={c.id}
+                className={`sticker ${cls} ${
+                  lastPicked === c.id ? "slap" : ""
+                } ${locked ? "foil" : ""}`}
+                style={{ ["--rot" as string]: `${rot}deg` }}
+                onClick={() => !locked && setActiveCat(c)}
+                disabled={locked}
+              >
+                <span className="stk-cat">{c.short}</span>
+                <span className="stk-flag">{p.flag}</span>
+                <span className="stk-name">{p.name}</span>
+                <span className={`stk-tier ${cls}`}>
+                  {m?.tier.label} ×{m?.multiplier}
+                </span>
+                {locked && m && (
+                  <span className="stk-pop">{m.pct}% agree</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {!locked ? (
+          <>
+            <button
+              className={`primary ${complete ? "" : "disabled"}`}
+              disabled={!complete}
+              onClick={lockIn}
+            >
+              {complete ? "LOCK MY SIX" : `${doneCount} OF 6 COLLECTED`}
+            </button>
+            {complete && (
+              <p className="footnote">
+                Locked means locked. Everyone&apos;s picks stay hidden until
+                kickoff.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="bold-strip">
+              <span>BOLDNESS RATING</span>
+              <span className="bold-val">×{avgMult}</span>
+            </div>
+            <button className="primary" onClick={copyShare}>
+              {copied ? "COPIED ✓" : "SHARE MY SIX"}
+            </button>
+            <p className="footnote">
+              Straight to the group chat. Receipts dated and timestamped.
+            </p>
+          </>
+        )}
+      </main>
+      <footer className="ftr">
+        Full 48-team squad dataset · picks lock at the first whistle
+      </footer>
+    </div>
+  );
+}
