@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import { CATEGORIES, type CategoryId, type Category } from "@/lib/constants";
 import type { PickEntity, PicksMap } from "@/lib/types";
 import type { MultMaps } from "@/lib/multiplierMap";
@@ -8,6 +9,7 @@ import type { RefData } from "@/lib/data";
 import { poolForCategory } from "@/lib/data";
 import Picker from "./Picker";
 import Confetti from "./Confetti";
+import ShareCard, { type ShareCardPick } from "./ShareCard";
 
 const ROTATIONS = [-2, 1.5, -1, 2, -1.5, 1];
 
@@ -19,6 +21,7 @@ export default function Album({
   locked,
   onLock,
   handle,
+  displayName,
 }: {
   data: RefData;
   mults: MultMaps;
@@ -27,11 +30,14 @@ export default function Album({
   locked: boolean;
   onLock: (boldness: number) => void | Promise<void>;
   handle: string;
+  displayName: string;
 }) {
   const [activeCat, setActiveCat] = useState<Category | null>(null);
   const [lastPicked, setLastPicked] = useState<CategoryId | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const multFor = (cat: CategoryId, entityId: string) =>
     mults.get(cat)?.get(entityId);
@@ -70,18 +76,52 @@ export default function Album({
     )}\n\nBoldness ×${avgMult}\nReckon you know better?`;
   };
 
-  // Native share sheet (covers WhatsApp/IG/X/Messages on mobile); falls back
-  // to copying the link if Web Share isn't available.
+  // The six picks shaped for the shareable card.
+  const cardPicks: ShareCardPick[] = CATEGORIES.map((c) => {
+    const p = picks[c.id];
+    const m = p ? multFor(c.id, p.entityId) : undefined;
+    return {
+      short: c.short,
+      flag: p?.flag ?? "🏳️",
+      name: p?.name ?? "—",
+      multiplier: m?.multiplier ?? 1,
+      tierCls: m?.tier.cls ?? "common",
+      tierLabel: m?.tier.label ?? "COMMON",
+    };
+  });
+
+  // Snapshot the card to a PNG and open the native share sheet WITH the image
+  // (SPEC §6). Falls back to a text+link share, then to copying the link.
   const nativeShare = async () => {
+    if (sharing) return;
+    setSharing(true);
     const url = shareUrl();
     try {
-      if (navigator.share) {
+      let file: File | null = null;
+      if (cardRef.current) {
+        const dataUrl = await toPng(cardRef.current, {
+          pixelRatio: 2,
+          cacheBust: true,
+        });
+        const blob = await (await fetch(dataUrl)).blob();
+        file = new File([blob], "called-it.png", { type: "image/png" });
+      }
+
+      if (
+        file &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] })
+      ) {
+        await navigator.share({ files: [file], text: shareText(), url });
+      } else if (navigator.share) {
         await navigator.share({ title: "CALLED IT.", text: shareText(), url });
       } else {
         await copyLink();
       }
     } catch {
-      /* user dismissed the sheet */
+      /* user dismissed the sheet, or capture failed — no-op */
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -205,8 +245,8 @@ export default function Album({
               <span>BOLDNESS RATING</span>
               <span className="bold-val">×{avgMult}</span>
             </div>
-            <button className="primary" onClick={nativeShare}>
-              SHARE MY SIX
+            <button className="primary" onClick={nativeShare} disabled={sharing}>
+              {sharing ? "PREPARING…" : "SHARE MY SIX"}
             </button>
             <div className="share-row">
               <a className="share-btn" href={waHref()} target="_blank" rel="noreferrer">
@@ -222,6 +262,13 @@ export default function Album({
             <p className="footnote">
               Straight to the group chat. Receipts dated and timestamped.
             </p>
+            <ShareCard
+              ref={cardRef}
+              displayName={displayName}
+              handle={handle}
+              boldness={avgMult ?? "0.0"}
+              picks={cardPicks}
+            />
           </>
         )}
       </main>

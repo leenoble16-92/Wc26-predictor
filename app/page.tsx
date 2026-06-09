@@ -110,6 +110,7 @@ export default function Home() {
           locked={locked}
           onLock={onLock}
           handle={profile.handle}
+          displayName={profile.display_name}
         />
       ) : (
         <LeagueView userId={profile.id} />
