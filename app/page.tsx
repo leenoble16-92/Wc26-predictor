@@ -109,6 +109,7 @@ export default function Home() {
           onPick={onPick}
           locked={locked}
           onLock={onLock}
+          handle={profile.handle}
         />
       ) : (
         <LeagueView userId={profile.id} />

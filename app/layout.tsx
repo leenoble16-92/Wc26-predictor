@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const siteUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : "https://calleditwc26.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "CALLED IT.",
   description: "World Cup 2026 predictions. Six calls, one summer.",
 };

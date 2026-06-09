@@ -18,6 +18,7 @@ export default function Album({
   onPick,
   locked,
   onLock,
+  handle,
 }: {
   data: RefData;
   mults: MultMaps;
@@ -25,6 +26,7 @@ export default function Album({
   onPick: (category: CategoryId, entity: PickEntity) => void | Promise<void>;
   locked: boolean;
   onLock: (boldness: number) => void | Promise<void>;
+  handle: string;
 }) {
   const [activeCat, setActiveCat] = useState<Category | null>(null);
   const [lastPicked, setLastPicked] = useState<CategoryId | null>(null);
@@ -54,6 +56,9 @@ export default function Album({
     void onLock(Number(avgMult));
   };
 
+  const shareUrl = () =>
+    typeof window !== "undefined" ? `${window.location.origin}/u/${handle}` : "";
+
   const shareText = () => {
     const lines = CATEGORIES.map((c) => {
       const p = picks[c.id];
@@ -65,15 +70,37 @@ export default function Album({
     )}\n\nBoldness ×${avgMult}\nReckon you know better?`;
   };
 
-  const copyShare = async () => {
+  // Native share sheet (covers WhatsApp/IG/X/Messages on mobile); falls back
+  // to copying the link if Web Share isn't available.
+  const nativeShare = async () => {
+    const url = shareUrl();
     try {
-      await navigator.clipboard.writeText(shareText());
+      if (navigator.share) {
+        await navigator.share({ title: "CALLED IT.", text: shareText(), url });
+      } else {
+        await copyLink();
+      }
+    } catch {
+      /* user dismissed the sheet */
+    }
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${shareText()}\n${shareUrl()}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       /* clipboard unavailable */
     }
   };
+
+  const waHref = () =>
+    `https://wa.me/?text=${encodeURIComponent(`${shareText()}\n${shareUrl()}`)}`;
+  const xHref = () =>
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      shareText()
+    )}&url=${encodeURIComponent(shareUrl())}`;
 
   if (activeCat) {
     const pool = poolForCategory(activeCat.id, data);
@@ -178,9 +205,20 @@ export default function Album({
               <span>BOLDNESS RATING</span>
               <span className="bold-val">×{avgMult}</span>
             </div>
-            <button className="primary" onClick={copyShare}>
-              {copied ? "COPIED ✓" : "SHARE MY SIX"}
+            <button className="primary" onClick={nativeShare}>
+              SHARE MY SIX
             </button>
+            <div className="share-row">
+              <a className="share-btn" href={waHref()} target="_blank" rel="noreferrer">
+                WhatsApp
+              </a>
+              <a className="share-btn" href={xHref()} target="_blank" rel="noreferrer">
+                X
+              </a>
+              <button className="share-btn" onClick={copyLink}>
+                {copied ? "Copied ✓" : "Copy link"}
+              </button>
+            </div>
             <p className="footnote">
               Straight to the group chat. Receipts dated and timestamped.
             </p>
