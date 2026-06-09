@@ -81,13 +81,13 @@ export async function joinLeague(
 ): Promise<League> {
   const league = await findLeagueByCode(supabase, code);
   if (!league) throw new Error("No league with that code.");
+  // Plain insert (not upsert): upsert's ON CONFLICT DO UPDATE path would
+  // require an UPDATE policy on league_members, which we deliberately don't
+  // grant. Already-a-member shows up as a duplicate-key error, which is fine.
   const { error } = await supabase
     .from("league_members")
-    .upsert(
-      { league_id: league.id, user_id: userId },
-      { onConflict: "league_id,user_id" }
-    );
-  if (error) throw error;
+    .insert({ league_id: league.id, user_id: userId });
+  if (error && error.code !== "23505") throw error;
   return league;
 }
 
