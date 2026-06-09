@@ -35,6 +35,7 @@ export default function Album({
   const [celebrate, setCelebrate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [pasteHint, setPasteHint] = useState(false);
 
   const multFor = (cat: CategoryId, entityId: string) =>
     mults.get(cat)?.get(entityId);
@@ -62,16 +63,22 @@ export default function Album({
   const shareUrl = () =>
     typeof window !== "undefined" ? `${window.location.origin}/u/${handle}` : "";
 
-  const shareText = () => {
-    const lines = CATEGORIES.map((c) => {
+  // The six, as text lines.
+  const lines = () =>
+    CATEGORIES.map((c) => {
       const p = picks[c.id];
       const m = p ? multFor(c.id, p.entityId)?.multiplier : undefined;
-      return `${c.short}: ${p?.name ?? "—"}  ×${m ?? 1}`;
-    });
-    return `CALLED IT — World Cup 2026 🏆\n\n${lines.join(
-      "\n"
-    )}\n\nBoldness ×${avgMult}\nReckon you know better?`;
-  };
+      return `${c.short}: ${p?.name ?? "—"} ×${m ?? 1}`;
+    }).join("\n");
+
+  // Full caption WITH the app link embedded — so it survives even when an app
+  // drops the separate share url and keeps only the image + text.
+  const caption = () =>
+    `I've called the World Cup 2026 🏆\n\n${lines()}\n\nBoldness ×${avgMult} — reckon you know better?\nMake your six → ${shareUrl()}`;
+
+  // Without the link, for the X intent (which takes url separately).
+  const shareText = () =>
+    `I've called the World Cup 2026 🏆\n\n${lines()}\n\nBoldness ×${avgMult} — reckon you know better? Make your six:`;
 
   // URL of the server-rendered share image, carrying the six picks as params.
   const shareImageUrl = () => {
@@ -119,7 +126,16 @@ export default function Album({
         typeof navigator.canShare === "function" &&
         navigator.canShare({ files: [file] })
       ) {
-        await navigator.share({ files: [file], text: shareText(), url });
+        // Most apps DROP text when an image is attached (iOS/WhatsApp/IG), so
+        // copy the caption to the clipboard — it's then one paste away.
+        try {
+          await navigator.clipboard.writeText(caption());
+          setPasteHint(true);
+          setTimeout(() => setPasteHint(false), 6000);
+        } catch {
+          /* clipboard blocked — image still shares */
+        }
+        await navigator.share({ files: [file], text: caption() });
       } else if (navigator.share) {
         await navigator.share({ title: "CALLED IT.", text: shareText(), url });
       } else {
@@ -134,7 +150,7 @@ export default function Album({
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(`${shareText()}\n${shareUrl()}`);
+      await navigator.clipboard.writeText(caption());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -142,8 +158,7 @@ export default function Album({
     }
   };
 
-  const waHref = () =>
-    `https://wa.me/?text=${encodeURIComponent(`${shareText()}\n${shareUrl()}`)}`;
+  const waHref = () => `https://wa.me/?text=${encodeURIComponent(caption())}`;
   const xHref = () =>
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       shareText()
@@ -255,6 +270,11 @@ export default function Album({
             <button className="primary" onClick={nativeShare} disabled={sharing}>
               {sharing ? "PREPARING…" : "SHARE MY SIX"}
             </button>
+            {pasteHint && (
+              <p className="paste-hint">
+                📋 Caption copied — paste it with your post.
+              </p>
+            )}
             <div className="share-row">
               <a className="share-btn" href={waHref()} target="_blank" rel="noreferrer">
                 WhatsApp
