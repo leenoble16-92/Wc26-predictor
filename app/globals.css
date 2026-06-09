@@ -171,6 +171,19 @@
 
 .note { font-size: 12.5px; color: #8E9AD6; line-height: 1.6; }
 
+/* League create/join */
+.league-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.chip {
+  border: 1.5px solid rgba(255,255,255,0.2); background: transparent; color: #B9C2EA;
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.3px;
+  padding: 7px 14px; border-radius: 99px; cursor: pointer;
+}
+.chip.on { background: #FFD34D; border-color: #FFD34D; color: #101A4A; }
+.league-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+.league-form { margin-bottom: 18px; }
+.league-form .search { margin-bottom: 10px; }
+.code-input { letter-spacing: 4px; font-family: 'Anton', sans-serif; text-transform: uppercase; }
+
 .empty { text-align: center; color: #8E9AD6; font-size: 13px; padding: 30px 16px; }
 .ftr { text-align: center; font-size: 10px; color: rgba(255,255,255,0.25); padding: 8px 20px 18px; }
 

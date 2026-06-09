@@ -5,12 +5,14 @@ import { createClient } from "@/lib/supabase/client";
 import { getMyProfile, type Profile } from "@/lib/profile";
 import { loadRefData, type RefData } from "@/lib/data";
 import { loadMultiplierMaps } from "@/lib/loadMultipliers";
-import { loadPicks, savePick } from "@/lib/picks";
+import { loadPicks, savePick, lockPicks } from "@/lib/picks";
 import type { CategoryId } from "@/lib/constants";
 import type { PickEntity, PicksMap } from "@/lib/types";
 import type { MultMaps } from "@/lib/multiplierMap";
 import Onboarding from "@/components/Onboarding";
 import Album from "@/components/Album";
+import AppShell, { type Tab } from "@/components/AppShell";
+import LeagueView from "@/components/LeagueView";
 
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -19,6 +21,8 @@ export default function Home() {
   const [data, setData] = useState<RefData | null>(null);
   const [mults, setMults] = useState<MultMaps | null>(null);
   const [picks, setPicks] = useState<PicksMap>({});
+  const [locked, setLocked] = useState(false);
+  const [tab, setTab] = useState<Tab>("album");
 
   // Resolve the current profile on mount.
   useEffect(() => {
@@ -36,10 +40,15 @@ export default function Home() {
     (async () => {
       const ref = await loadRefData(supabase);
       const maps = await loadMultiplierMaps(supabase, ref);
-      const { picks: saved } = await loadPicks(supabase, profile.id, ref);
+      const { picks: saved, locked: alreadyLocked } = await loadPicks(
+        supabase,
+        profile.id,
+        ref
+      );
       setData(ref);
       setMults(maps);
       setPicks(saved);
+      setLocked(alreadyLocked);
     })().catch((e) => console.error("load failed", e));
   }, [profile]);
 
@@ -80,5 +89,30 @@ export default function Home() {
     );
   }
 
-  return <Album data={data} mults={mults} picks={picks} onPick={onPick} />;
+  const onLock = async (boldness: number) => {
+    setLocked(true);
+    try {
+      await lockPicks(createClient(), profile.id, boldness);
+    } catch (e) {
+      console.error("lockPicks failed", e);
+      setLocked(false);
+    }
+  };
+
+  return (
+    <AppShell tab={tab} onTab={setTab}>
+      {tab === "album" ? (
+        <Album
+          data={data}
+          mults={mults}
+          picks={picks}
+          onPick={onPick}
+          locked={locked}
+          onLock={onLock}
+        />
+      ) : (
+        <LeagueView userId={profile.id} />
+      )}
+    </AppShell>
+  );
 }

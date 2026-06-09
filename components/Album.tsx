@@ -6,7 +6,6 @@ import type { PickEntity, PicksMap } from "@/lib/types";
 import type { MultMaps } from "@/lib/multiplierMap";
 import type { RefData } from "@/lib/data";
 import { poolForCategory } from "@/lib/data";
-import Header from "./Header";
 import Picker from "./Picker";
 import Confetti from "./Confetti";
 
@@ -17,15 +16,18 @@ export default function Album({
   mults,
   picks,
   onPick,
+  locked,
+  onLock,
 }: {
   data: RefData;
   mults: MultMaps;
   picks: PicksMap;
   onPick: (category: CategoryId, entity: PickEntity) => void | Promise<void>;
+  locked: boolean;
+  onLock: (boldness: number) => void | Promise<void>;
 }) {
   const [activeCat, setActiveCat] = useState<Category | null>(null);
   const [lastPicked, setLastPicked] = useState<CategoryId | null>(null);
-  const [locked, setLocked] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -46,9 +48,10 @@ export default function Album({
   }, [picks, mults]);
 
   const lockIn = () => {
-    setLocked(true);
+    if (!avgMult) return;
     setCelebrate(true);
     setTimeout(() => setCelebrate(false), 2600);
+    void onLock(Number(avgMult));
   };
 
   const shareText = () => {
@@ -75,30 +78,26 @@ export default function Album({
   if (activeCat) {
     const pool = poolForCategory(activeCat.id, data);
     return (
-      <div className="app">
-        <Header />
-        <main className="main">
-          <Picker
-            cat={activeCat}
-            pool={pool}
-            mults={mults.get(activeCat.id) ?? new Map()}
-            selectedId={picks[activeCat.id]?.entityId ?? null}
-            onPick={(entity) => {
-              onPick(activeCat.id, entity);
-              setLastPicked(activeCat.id);
-              setActiveCat(null);
-            }}
-            onBack={() => setActiveCat(null)}
-          />
-        </main>
-      </div>
+      <main className="main">
+        <Picker
+          cat={activeCat}
+          pool={pool}
+          mults={mults.get(activeCat.id) ?? new Map()}
+          selectedId={picks[activeCat.id]?.entityId ?? null}
+          onPick={(entity) => {
+            onPick(activeCat.id, entity);
+            setLastPicked(activeCat.id);
+            setActiveCat(null);
+          }}
+          onBack={() => setActiveCat(null)}
+        />
+      </main>
     );
   }
 
   return (
-    <div className="app">
+    <>
       {celebrate && <Confetti />}
-      <Header />
       <main className="main">
         <h1 className="headline">
           SIX CALLS.
@@ -188,9 +187,6 @@ export default function Album({
           </>
         )}
       </main>
-      <footer className="ftr">
-        Full 48-team squad dataset · picks lock at the first whistle
-      </footer>
-    </div>
+    </>
   );
 }

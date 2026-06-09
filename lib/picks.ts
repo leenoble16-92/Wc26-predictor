@@ -67,3 +67,32 @@ export async function savePick(
     .upsert(row, { onConflict: "user_id,category" });
   if (error) throw error;
 }
+
+/**
+ * Lock the user's six picks: stamp picks.locked_at (RLS then makes them
+ * immutable) and mirror lock status + boldness onto the public profile so
+ * league mates can see them without reading the picks themselves.
+ * Irreversible — RLS blocks any further pick update once locked_at is set.
+ */
+export async function lockPicks(
+  supabase: SupabaseClient,
+  userId: string,
+  boldness: number
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  // Profile flags first: if the 0004 columns aren't migrated yet this fails
+  // BEFORE we stamp picks.locked_at, so we never leave picks half-locked.
+  const profRes = await supabase
+    .from("profiles")
+    .update({ locked_at: now, boldness })
+    .eq("id", userId);
+  if (profRes.error) throw profRes.error;
+
+  const pickRes = await supabase
+    .from("picks")
+    .update({ locked_at: now })
+    .eq("user_id", userId)
+    .is("locked_at", null);
+  if (pickRes.error) throw pickRes.error;
+}
