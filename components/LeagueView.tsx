@@ -6,16 +6,15 @@ import {
   createLeague,
   joinLeague,
   myLeagues,
-  leagueMembers,
   type League,
-  type LeagueMember,
 } from "@/lib/leagues";
+import { leagueStandings, type Standing } from "@/lib/leaderboard";
 
 export default function LeagueView({ userId }: { userId: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [active, setActive] = useState<League | null>(null);
-  const [members, setMembers] = useState<LeagueMember[]>([]);
+  const [members, setMembers] = useState<Standing[]>([]);
 
   const [mode, setMode] = useState<"none" | "create" | "join">("none");
   const [name, setName] = useState("");
@@ -23,6 +22,7 @@ export default function LeagueView({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
 
   const refreshLeagues = useCallback(
     async (selectId?: string) => {
@@ -42,7 +42,7 @@ export default function LeagueView({ userId }: { userId: string }) {
       setMembers([]);
       return;
     }
-    leagueMembers(supabase, active.id, userId)
+    leagueStandings(supabase, active.id, userId)
       .then(setMembers)
       .catch((e) => console.error(e));
   }, [active, supabase, userId]);
@@ -85,6 +85,53 @@ export default function LeagueView({ userId }: { userId: string }) {
       setTimeout(() => setCopied(false), 1600);
     } catch {
       /* clipboard unavailable */
+    }
+  };
+
+  // Share an invite: a /join/<code> deep link (auto-joins + onboards) plus the
+  // league invite card image, via the native share sheet.
+  const shareLeague = async () => {
+    if (!active || shareBusy) return;
+    setShareBusy(true);
+    const joinUrl = `${window.location.origin}/join/${active.code}`;
+    const lockedCount = members.filter((m) => m.locked).length;
+    const caption =
+      `Join my CALLED IT. league "${active.name}" ⚽\n` +
+      `Six World Cup calls, locked at kickoff. ${lockedCount}/${members.length} in.\n` +
+      `Tap to join → ${joinUrl}`;
+    try {
+      let file: File | null = null;
+      try {
+        const q = new URLSearchParams({
+          name: active.name,
+          code: active.code,
+          members: String(members.length),
+          locked: String(lockedCount),
+        });
+        const res = await fetch(`/api/og/league?${q.toString()}`);
+        if (res.ok) file = new File([await res.blob()], "league.png", { type: "image/png" });
+      } catch {
+        /* fall back to text share */
+      }
+      if (file && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        // Apps drop text alongside images — copy the join link so it can paste.
+        try {
+          await navigator.clipboard.writeText(caption);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 4000);
+        } catch {
+          /* clipboard blocked */
+        }
+        await navigator.share({ files: [file], text: caption });
+      } else if (navigator.share) {
+        await navigator.share({ title: "CALLED IT.", text: caption, url: joinUrl });
+      } else {
+        await navigator.clipboard.writeText(caption);
+      }
+    } catch {
+      /* user dismissed */
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -179,30 +226,72 @@ export default function LeagueView({ userId }: { userId: string }) {
             </button>
           </div>
 
-          <div className="table">
-            <div className="t-row t-head">
-              <span>MEMBER</span>
-              <span>STATUS</span>
-              <span className="t-right">BOLDNESS</span>
-            </div>
-            {members.map((m) => (
-              <div className={`t-row ${m.isYou ? "me" : ""}`} key={m.user_id}>
-                <span className="t-name">{m.isYou ? "You" : m.display_name}</span>
-                <span className={`t-status ${m.locked ? "in" : ""}`}>
-                  {m.locked ? "Locked ✓" : "Still picking"}
-                </span>
-                <span className="t-right t-mult">
-                  {m.locked && m.boldness != null ? `×${m.boldness.toFixed(1)}` : "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <p className="note">
-            Boldness — the average rarity of a member&apos;s six — is all you can
-            see before kickoff. Picks reveal at the first whistle, then the table
-            scores live with every match.
+          <button className="primary" onClick={shareLeague} disabled={shareBusy}>
+            {shareBusy ? "PREPARING…" : "📣 INVITE MATES"}
+          </button>
+          <p className="footnote">
+            Sends a join link — they tap, pick a name, and they&apos;re in your
+            league.
           </p>
+
+          {members.some((m) => m.hasScore) ? (
+            <>
+              <div className="table">
+                <div className="t-row t-head lb">
+                  <span>#</span>
+                  <span>MEMBER</span>
+                  <span className="t-right">POINTS</span>
+                </div>
+                {members.map((m) => (
+                  <div className={`t-row lb ${m.isYou ? "me" : ""}`} key={m.user_id}>
+                    <span className="t-rank">
+                      {m.rank}
+                      {m.delta !== 0 && (
+                        <i className={m.delta > 0 ? "up" : "down"}>
+                          {m.delta > 0 ? `▲${m.delta}` : `▼${-m.delta}`}
+                        </i>
+                      )}
+                    </span>
+                    <span className="t-name">{m.isYou ? "You" : m.display_name}</span>
+                    <span className="t-right t-mult">
+                      {Math.round(m.points)}
+                      {m.provisional > 0 && <i className="prov" title="includes provisional" />}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="note">
+                <i className="prov" /> = includes provisional points that can still
+                change. Final points settle as results land.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="table">
+                <div className="t-row t-head">
+                  <span>MEMBER</span>
+                  <span>STATUS</span>
+                  <span className="t-right">BOLDNESS</span>
+                </div>
+                {members.map((m) => (
+                  <div className={`t-row ${m.isYou ? "me" : ""}`} key={m.user_id}>
+                    <span className="t-name">{m.isYou ? "You" : m.display_name}</span>
+                    <span className={`t-status ${m.locked ? "in" : ""}`}>
+                      {m.locked ? "Locked ✓" : "Still picking"}
+                    </span>
+                    <span className="t-right t-mult">
+                      {m.locked && m.boldness != null ? `×${m.boldness.toFixed(1)}` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="note">
+                Boldness — the average rarity of a member&apos;s six — is all you
+                can see before kickoff. Picks reveal at the first whistle, then
+                the table scores live with every match.
+              </p>
+            </>
+          )}
         </>
       ) : (
         mode === "none" && (

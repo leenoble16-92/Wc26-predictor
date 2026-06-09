@@ -2,7 +2,7 @@
 
 import Header from "./Header";
 
-export type Tab = "album" | "league";
+export type Tab = "album" | "league" | "global";
 
 export default function AppShell({
   tab,
@@ -21,6 +21,7 @@ export default function AppShell({
           [
             ["album", "My six"],
             ["league", "League"],
+            ["global", "Global"],
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <button
