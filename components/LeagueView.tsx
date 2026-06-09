@@ -10,7 +10,13 @@ import {
 } from "@/lib/leagues";
 import { leagueStandings, type Standing } from "@/lib/leaderboard";
 
-export default function LeagueView({ userId }: { userId: string }) {
+export default function LeagueView({
+  userId,
+  teamFlags,
+}: {
+  userId: string;
+  teamFlags: Map<string, string>;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [active, setActive] = useState<League | null>(null);
@@ -252,7 +258,12 @@ export default function LeagueView({ userId }: { userId: string }) {
                         </i>
                       )}
                     </span>
-                    <span className="t-name">{m.isYou ? "You" : m.display_name}</span>
+                    <span className="t-name">
+                      {m.favourite_team && (
+                        <span className="fav-flag">{teamFlags.get(m.favourite_team)}</span>
+                      )}
+                      {m.isYou ? "You" : m.display_name}
+                    </span>
                     <span className="t-right t-mult">
                       {Math.round(m.points)}
                       {m.provisional > 0 && <i className="prov" title="includes provisional" />}
@@ -275,7 +286,12 @@ export default function LeagueView({ userId }: { userId: string }) {
                 </div>
                 {members.map((m) => (
                   <div className={`t-row ${m.isYou ? "me" : ""}`} key={m.user_id}>
-                    <span className="t-name">{m.isYou ? "You" : m.display_name}</span>
+                    <span className="t-name">
+                      {m.favourite_team && (
+                        <span className="fav-flag">{teamFlags.get(m.favourite_team)}</span>
+                      )}
+                      {m.isYou ? "You" : m.display_name}
+                    </span>
                     <span className={`t-status ${m.locked ? "in" : ""}`}>
                       {m.locked ? "Locked ✓" : "Still picking"}
                     </span>

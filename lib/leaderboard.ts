@@ -15,6 +15,7 @@ export interface Standing {
   user_id: string;
   display_name: string;
   handle: string;
+  favourite_team: string | null;
   rank: number;
   points: number;
   provisional: number;
@@ -38,7 +39,7 @@ export async function leagueStandings(
 ): Promise<Standing[]> {
   const { data: memberRows, error } = await supabase
     .from("league_members")
-    .select("user_id, profiles(display_name, handle, boldness, locked_at)")
+    .select("user_id, profiles(display_name, handle, boldness, locked_at, favourite_team)")
     .eq("league_id", leagueId);
   if (error) throw error;
 
@@ -49,6 +50,7 @@ export async function leagueStandings(
       handle: string;
       boldness: number | null;
       locked_at: string | null;
+      favourite_team: string | null;
     } | null;
   }[];
   const ids = members.map((m) => m.user_id);
@@ -67,6 +69,7 @@ export async function leagueStandings(
       user_id: m.user_id,
       display_name: m.profiles?.display_name ?? "Player",
       handle: m.profiles?.handle ?? "",
+      favourite_team: m.profiles?.favourite_team ?? null,
       rank: 0,
       points: s?.points ?? 0,
       provisional: s?.breakdown?.provisional ?? 0,
@@ -103,7 +106,7 @@ export async function globalLeaderboard(
   const { favouriteTeam = null, topN = 20 } = opts;
   const profileJoin = favouriteTeam
     ? "profiles!inner(display_name, handle, favourite_team)"
-    : "profiles(display_name, handle)";
+    : "profiles(display_name, handle, favourite_team)";
 
   // Top N for display.
   let topQuery = supabase
@@ -119,12 +122,13 @@ export async function globalLeaderboard(
       user_id: string;
       points: number;
       breakdown: ScoreBreakdown | null;
-      profiles: { display_name: string; handle: string } | null;
+      profiles: { display_name: string; handle: string; favourite_team: string | null } | null;
     }[]
   ).map((r, i) => ({
     user_id: r.user_id,
     display_name: r.profiles?.display_name ?? "Player",
     handle: r.profiles?.handle ?? "",
+    favourite_team: r.profiles?.favourite_team ?? null,
     rank: i + 1,
     points: r.points,
     provisional: r.breakdown?.provisional ?? 0,

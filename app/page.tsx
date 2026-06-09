@@ -14,6 +14,7 @@ import Album from "@/components/Album";
 import AppShell, { type Tab } from "@/components/AppShell";
 import LeagueView from "@/components/LeagueView";
 import GlobalView from "@/components/GlobalView";
+import ResultsView from "@/components/ResultsView";
 
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -28,7 +29,7 @@ export default function Home() {
   // Resolve the current profile on mount; honour ?tab= for deep links.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "league" || t === "global") setTab(t);
+    if (t === "league" || t === "global" || t === "results") setTab(t);
     const supabase = createClient();
     getMyProfile(supabase)
       .then(setProfile)
@@ -102,6 +103,10 @@ export default function Home() {
     }
   };
 
+  const teamFlags = new Map(
+    [...data.teamById].map(([id, t]) => [id, t.flag])
+  );
+
   return (
     <AppShell tab={tab} onTab={setTab}>
       {tab === "album" && (
@@ -116,10 +121,11 @@ export default function Home() {
           displayName={profile.display_name}
         />
       )}
-      {tab === "league" && <LeagueView userId={profile.id} />}
+      {tab === "league" && <LeagueView userId={profile.id} teamFlags={teamFlags} />}
       {tab === "global" && (
         <GlobalView
           userId={profile.id}
+          teamFlags={teamFlags}
           favouriteTeam={(() => {
             const t = profile.favourite_team
               ? data.teamById.get(profile.favourite_team)
@@ -128,6 +134,7 @@ export default function Home() {
           })()}
         />
       )}
+      {tab === "results" && <ResultsView teamFlags={teamFlags} />}
     </AppShell>
   );
 }

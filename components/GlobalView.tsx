@@ -7,9 +7,11 @@ import { globalLeaderboard, type GlobalBoard } from "@/lib/leaderboard";
 export default function GlobalView({
   userId,
   favouriteTeam,
+  teamFlags,
 }: {
   userId: string;
   favouriteTeam: { id: string; name: string; flag: string } | null;
+  teamFlags: Map<string, string>;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [board, setBoard] = useState<GlobalBoard | null>(null);
@@ -82,7 +84,12 @@ export default function GlobalView({
         {(board?.top ?? []).map((s) => (
           <div className={`t-row lb ${s.isYou ? "me" : ""}`} key={s.user_id}>
             <span className="t-rank">{s.rank}</span>
-            <span className="t-name">{s.isYou ? "You" : s.display_name}</span>
+            <span className="t-name">
+              {s.favourite_team && (
+                <span className="fav-flag">{teamFlags.get(s.favourite_team)}</span>
+              )}
+              {s.isYou ? "You" : s.display_name}
+            </span>
             <span className="t-right t-mult">
               {Math.round(s.points)}
               {s.provisional > 0 && <i className="prov" title="includes provisional" />}

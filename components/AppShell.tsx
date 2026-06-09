@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import Header from "./Header";
 
-export type Tab = "album" | "league" | "global";
+export type Tab = "album" | "league" | "global" | "results";
 
 export default function AppShell({
   tab,
@@ -22,6 +23,7 @@ export default function AppShell({
             ["album", "My six"],
             ["league", "League"],
             ["global", "Global"],
+            ["results", "Results"],
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <button
@@ -35,7 +37,10 @@ export default function AppShell({
       </nav>
       {children}
       <footer className="ftr">
-        Full 48-team squad dataset · picks lock at the first whistle
+        <Link href="/how" className="ftr-link">
+          How points work
+        </Link>{" "}
+        · picks lock at the first whistle
       </footer>
     </div>
   );
