@@ -7,12 +7,15 @@
 //   pct        = picks_for_entity / total_picks_in_category * 100
 //   multiplier = clamp(30 / max(pct, 0.1) + 0.9, 1.1, 10), 1dp
 //
-// Default distribution: popularity is assumed to decay with FIFA rank (teams)
-// or the rank of a player's national team, nudged by position (forwards draw
-// more Golden Boot / POTT picks). Weights are normalised so each category's
-// pcts sum to ~100 — a real distribution, not a fudge.
+// Default distribution: a popularity-proxy pick-share (%) that decays with
+// FIFA rank (teams) or a player's national-team rank, nudged by position
+// (forwards draw the most Golden Boot / POTT picks). It's a heuristic stand-in
+// that yields a believable spread of rarity tiers at any pool size — NOT a
+// claim about real behaviour. Real shares replace it when the cron fills
+// pick_stats tomorrow.
 
 import type { PickEntity } from "./types";
+import type { CategoryId } from "./constants";
 import { multiplierFromPct, tierFor, type Tier } from "./multipliers";
 
 export interface PickStatRow {
@@ -29,31 +32,36 @@ export interface EntityMultiplier {
   source: "pick_stats" | "default";
 }
 
+// Multiplier maps for every category, keyed by entity id.
+export type MultMaps = Map<CategoryId, Map<string, EntityMultiplier>>;
+
 const POSITION_WEIGHT: Record<string, number> = {
-  Offence: 1.6,
-  Attacker: 1.6,
-  Forward: 1.6,
-  Midfield: 1.0,
-  Midfielder: 1.0,
-  Defence: 0.5,
-  Defender: 0.5,
-  Goalkeeper: 0.3,
+  Offence: 1.0,
+  Attacker: 1.0,
+  Forward: 1.0,
+  Midfield: 0.55,
+  Midfielder: 0.55,
+  Defence: 0.3,
+  Defender: 0.3,
+  Goalkeeper: 0.2,
 };
 
 function positionWeight(position?: string | null): number {
-  if (!position) return 1.0;
-  return POSITION_WEIGHT[position] ?? 1.0;
+  if (!position) return 0.5;
+  return POSITION_WEIGHT[position] ?? 0.5;
 }
 
-/** Raw popularity weight for one entity within its category pool. */
-function defaultWeight(e: PickEntity, teamRank: (id: string) => number): number {
-  if (e.type === "team") {
-    const rank = e.rank ?? 50;
-    return 1 / Math.max(rank, 1);
-  }
-  // player: weight by their team's rank and position
-  const rank = teamRank(e.entityId);
-  return positionWeight(e.position) / Math.max(rank, 1);
+/**
+ * Heuristic default pick-share (%) for one entity — popularity decays with
+ * rank; players are additionally scaled by position. Clamped to a sane band.
+ * This is fed straight into the §5 multiplier formula.
+ */
+function defaultPopPct(e: PickEntity, teamRank: (id: string) => number): number {
+  const rank = e.type === "team" ? e.rank ?? 50 : teamRank(e.entityId);
+  const decay = e.type === "team" ? 0.7 : 0.5;
+  const base = 24 / Math.pow(Math.max(rank, 1), decay);
+  const pop = e.type === "team" ? base : base * positionWeight(e.position);
+  return Math.min(40, Math.max(0.1, pop));
 }
 
 /**
@@ -68,12 +76,8 @@ export function buildMultiplierMap(
   const statByEntity = new Map(stats.map((s) => [s.entity_id, s]));
   const rankOf = (id: string) => teamRankById.get(id) ?? 50;
 
-  // Default distribution across the pool (normalised to 100).
-  const weights = pool.map((e) => defaultWeight(e, rankOf));
-  const totalWeight = weights.reduce((a, b) => a + b, 0) || 1;
-
   const out = new Map<string, EntityMultiplier>();
-  pool.forEach((e, i) => {
+  for (const e of pool) {
     const stat = statByEntity.get(e.entityId);
     if (stat && stat.multiplier != null) {
       const m = stat.multiplier;
@@ -83,9 +87,9 @@ export function buildMultiplierMap(
         tier: tierFor(m),
         source: "pick_stats",
       });
-      return;
+      continue;
     }
-    const pct = (weights[i] / totalWeight) * 100;
+    const pct = defaultPopPct(e, rankOf);
     const m = multiplierFromPct(pct);
     out.set(e.entityId, {
       multiplier: m,
@@ -93,6 +97,6 @@ export function buildMultiplierMap(
       tier: tierFor(m),
       source: "default",
     });
-  });
+  }
   return out;
 }
