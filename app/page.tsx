@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getMyProfile, type Profile } from "@/lib/profile";
 import { loadRefData, type RefData } from "@/lib/data";
 import { loadMultiplierMaps } from "@/lib/loadMultipliers";
+import { loadPicks, savePick } from "@/lib/picks";
 import type { CategoryId } from "@/lib/constants";
 import type { PickEntity } from "@/lib/types";
 import Onboarding from "@/components/Onboarding";
@@ -27,22 +28,36 @@ export default function Home() {
       .finally(() => setLoaded(true));
   }, []);
 
-  // Once we have a profile, load reference data + multipliers.
+  // Once we have a profile, load reference data + multipliers + saved picks.
   useEffect(() => {
     if (!profile) return;
     const supabase = createClient();
     (async () => {
       const ref = await loadRefData(supabase);
       const maps = await loadMultiplierMaps(supabase, ref);
+      const { picks: saved } = await loadPicks(supabase, profile.id, ref);
       setData(ref);
       setMults(maps);
+      setPicks(saved);
     })().catch((e) => console.error("load failed", e));
   }, [profile]);
 
-  // Step 6 will persist this to the picks table; for now it's local state.
-  const onPick = useCallback((category: CategoryId, entity: PickEntity) => {
-    setPicks((prev) => ({ ...prev, [category]: entity }));
-  }, []);
+  // Persist each pick to the DB through the anon client (RLS applies).
+  // Optimistic local update, rolled back if the write is rejected.
+  const onPick = useCallback(
+    async (category: CategoryId, entity: PickEntity) => {
+      if (!profile) return;
+      const prevEntity = picks[category];
+      setPicks((prev) => ({ ...prev, [category]: entity }));
+      try {
+        await savePick(createClient(), profile.id, category, entity);
+      } catch (e) {
+        console.error("savePick failed", e);
+        setPicks((prev) => ({ ...prev, [category]: prevEntity }));
+      }
+    },
+    [profile, picks]
+  );
 
   if (!loaded) {
     return (

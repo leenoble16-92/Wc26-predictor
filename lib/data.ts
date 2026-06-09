@@ -9,6 +9,7 @@ export interface RefData {
   teams: Team[];
   players: Player[];
   teamById: Map<string, Team>;
+  playerById: Map<number, Player>;
   teamRankById: Map<string, number>;
 }
 
@@ -23,6 +24,7 @@ export async function loadRefData(supabase: SupabaseClient): Promise<RefData> {
   const teams = (teamsRes.data ?? []) as Team[];
   const players = (playersRes.data ?? []) as Player[];
   const teamById = new Map(teams.map((t) => [t.id, t]));
+  const playerById = new Map(players.map((p) => [p.id, p]));
 
   // Players are keyed by team_id for the multiplier proxy; entity ids in
   // pick_stats are the player id, so map player-entity-id -> team rank.
@@ -33,7 +35,15 @@ export async function loadRefData(supabase: SupabaseClient): Promise<RefData> {
     if (t) teamRankById.set(String(p.id), t.fifa_rank);
   }
 
-  return { teams, players, teamById, teamRankById };
+  return { teams, players, teamById, playerById, teamRankById };
+}
+
+// Exported so picks loaded from the DB can be resolved back to display entities.
+export function teamToEntity(t: Team): PickEntity {
+  return teamEntity(t);
+}
+export function playerToEntity(p: Player, teamById: Map<string, Team>): PickEntity {
+  return playerEntity(p, teamById);
 }
 
 function teamEntity(t: Team): PickEntity {
