@@ -1,7 +1,7 @@
 "use client";
 
 // Browser Supabase client (anon key). All user reads/writes go through this
-// so RLS applies. SUPABASE_SERVICE_ROLE_KEY is NEVER referenced here.
+// so RLS applies. The elevated server-only key is never used in this file.
 import { createBrowserClient } from "@supabase/ssr";
 
 export function createClient() {

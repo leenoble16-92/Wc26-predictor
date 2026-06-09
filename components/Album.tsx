@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { CATEGORIES, type CategoryId, type Category } from "@/lib/constants";
-import type { PickEntity } from "@/lib/types";
-import type { EntityMultiplier } from "@/lib/multiplierMap";
+import type { PickEntity, PicksMap } from "@/lib/types";
+import type { MultMaps } from "@/lib/multiplierMap";
 import type { RefData } from "@/lib/data";
 import { poolForCategory } from "@/lib/data";
 import Header from "./Header";
@@ -11,9 +11,6 @@ import Picker from "./Picker";
 import Confetti from "./Confetti";
 
 const ROTATIONS = [-2, 1.5, -1, 2, -1.5, 1];
-
-export type PicksMap = Partial<Record<CategoryId, PickEntity>>;
-export type MultMaps = Map<CategoryId, Map<string, EntityMultiplier>>;
 
 export default function Album({
   data,

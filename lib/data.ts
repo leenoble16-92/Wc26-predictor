@@ -14,15 +14,28 @@ export interface RefData {
 }
 
 export async function loadRefData(supabase: SupabaseClient): Promise<RefData> {
-  const [teamsRes, playersRes] = await Promise.all([
-    supabase.from("teams").select("*").order("fifa_rank", { ascending: true }),
-    supabase.from("players").select("*").order("name", { ascending: true }),
-  ]);
+  const teamsRes = await supabase
+    .from("teams")
+    .select("*")
+    .order("fifa_rank", { ascending: true });
   if (teamsRes.error) throw teamsRes.error;
-  if (playersRes.error) throw playersRes.error;
-
   const teams = (teamsRes.data ?? []) as Team[];
-  const players = (playersRes.data ?? []) as Player[];
+
+  // PostgREST caps each request at 1000 rows; the squad pool is ~1,250, so
+  // page through until a short page comes back.
+  const players: Player[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const res = await supabase
+      .from("players")
+      .select("*")
+      .order("name", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (res.error) throw res.error;
+    const batch = (res.data ?? []) as Player[];
+    players.push(...batch);
+    if (batch.length < PAGE) break;
+  }
   const teamById = new Map(teams.map((t) => [t.id, t]));
   const playerById = new Map(players.map((p) => [p.id, p]));
 

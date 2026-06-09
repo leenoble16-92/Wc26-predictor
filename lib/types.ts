@@ -34,3 +34,6 @@ export interface Pick {
   player_id: number | null;
   locked_at: string | null;
 }
+
+// The user's current selection per category (entity resolved for display).
+export type PicksMap = Partial<Record<CategoryId, PickEntity>>;

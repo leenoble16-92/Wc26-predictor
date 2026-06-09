@@ -2,9 +2,8 @@
 // immutability + privacy are server-enforced, this layer just reads/writes).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CategoryId } from "./constants";
-import type { PickEntity } from "./types";
+import type { PickEntity, PicksMap } from "./types";
 import { type RefData, teamToEntity, playerToEntity } from "./data";
-import type { PicksMap } from "@/components/Album";
 
 interface PickRow {
   category: CategoryId;

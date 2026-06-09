@@ -7,9 +7,10 @@ import { loadRefData, type RefData } from "@/lib/data";
 import { loadMultiplierMaps } from "@/lib/loadMultipliers";
 import { loadPicks, savePick } from "@/lib/picks";
 import type { CategoryId } from "@/lib/constants";
-import type { PickEntity } from "@/lib/types";
+import type { PickEntity, PicksMap } from "@/lib/types";
+import type { MultMaps } from "@/lib/multiplierMap";
 import Onboarding from "@/components/Onboarding";
-import Album, { type PicksMap, type MultMaps } from "@/components/Album";
+import Album from "@/components/Album";
 
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
