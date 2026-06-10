@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { saveGameEmail } from "@/lib/auth";
 
-export default function SaveAccount({ isAnonymous }: { isAnonymous: boolean }) {
+export default function SaveAccount({ hasEmail }: { hasEmail: boolean }) {
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [email, setEmail] = useState("");
@@ -12,7 +12,8 @@ export default function SaveAccount({ isAnonymous }: { isAnonymous: boolean }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isAnonymous || dismissed) return null;
+  // Only nag accounts with no email stored (anonymous, no pending confirmation).
+  if (hasEmail || dismissed) return null;
 
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -48,7 +49,7 @@ export default function SaveAccount({ isAnonymous }: { isAnonymous: boolean }) {
                   save your game — your picks, leagues and score stay exactly as
                   they are, on any device.
                 </p>
-                <button className="primary" onClick={() => setOpen(false)}>
+                <button className="primary" onClick={() => { setDismissed(true); setOpen(false); }}>
                   GOT IT
                 </button>
               </>

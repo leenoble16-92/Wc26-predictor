@@ -17,17 +17,17 @@ export default function AppShell({
   tab,
   onTab,
   children,
-  isAnonymous,
+  hasEmail,
 }: {
   tab: Tab;
   onTab: (t: Tab) => void;
   children: React.ReactNode;
-  isAnonymous: boolean;
+  hasEmail: boolean;
 }) {
   return (
     <div className="app">
       <Header />
-      <SaveAccount isAnonymous={isAnonymous} />
+      <SaveAccount hasEmail={hasEmail} />
       <div className="shell-body">{children}</div>
       <nav className="bottom-nav">
         {NAV.map(([id, icon, label]) => (

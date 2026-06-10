@@ -21,7 +21,7 @@ import RoundView from "@/components/RoundView";
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [isAnonymous, setIsAnonymous] = useState(true);
+  const [hasEmail, setHasEmail] = useState(true); // assume true until known (avoid banner flash)
 
   const [data, setData] = useState<RefData | null>(null);
   const [mults, setMults] = useState<MultMaps | null>(null);
@@ -34,9 +34,17 @@ export default function Home() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "round" || t === "league" || t === "global" || t === "results") setTab(t);
     const supabase = createClient();
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setIsAnonymous(data.user?.is_anonymous ?? true));
+    supabase.auth.getUser().then(async ({ data }) => {
+      const u = data.user;
+      if (u?.email || u?.new_email) return setHasEmail(true);
+      if (!u) return setHasEmail(false);
+      const { data: row } = await supabase
+        .from("user_emails")
+        .select("user_id")
+        .eq("user_id", u.id)
+        .maybeSingle();
+      setHasEmail(!!row);
+    });
     getMyProfile(supabase)
       .then(setProfile)
       .catch(() => setProfile(null))
@@ -114,7 +122,7 @@ export default function Home() {
   );
 
   return (
-    <AppShell tab={tab} onTab={setTab} isAnonymous={isAnonymous}>
+    <AppShell tab={tab} onTab={setTab} hasEmail={hasEmail}>
       {tab === "album" && (
         <>
           {!profile.favourite_team && (
