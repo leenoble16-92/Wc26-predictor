@@ -18,6 +18,37 @@ export const BASE_POINTS = {
 export const DARK_HORSE_RANK_FLOOR = 12; // rank > 12 eligible
 export const FLOP_RANK_CEILING = 16; // rank <= 16 eligible
 
+// Recurring round picks (engagement layer). Base points are smaller than the
+// six — they supplement, scaled by the round-pick rarity multiplier.
+export const ROUND_BASE = { round_team: 25, round_scorer: 25 } as const;
+
+export type RoundCategoryId = "round_team" | "round_scorer";
+
+export interface RoundCategory {
+  id: RoundCategoryId;
+  label: string;
+  short: string;
+  type: EntityType;
+  hint: string;
+}
+
+export const ROUND_CATEGORIES: RoundCategory[] = [
+  {
+    id: "round_team",
+    label: "Team of the Round",
+    short: "TEAM OF THE ROUND",
+    type: "team",
+    hint: "Scores the most goals this round",
+  },
+  {
+    id: "round_scorer",
+    label: "Top Scorer of the Round",
+    short: "TOP SCORER",
+    type: "player",
+    hint: "Scores the most goals this round",
+  },
+];
+
 // The six prediction categories. `id` values match the DB check constraint
 // on picks.category exactly (SPEC §3).
 export type CategoryId =
