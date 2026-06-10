@@ -1,0 +1,63 @@
+<!--
+  CALLED IT. — branded auth email.
+  Paste this HTML into Supabase → Authentication → Email Templates for:
+    • Magic Link       • Confirm signup       • Change Email Address
+  The {{ .Type }} variable resolves per template, so one template covers all.
+  IMPORTANT: set Site URL (Authentication → URL Configuration) to your
+  PRODUCTION url first, or the link below will point at localhost.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1234;margin:0;padding:24px 0;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="width:480px;max-width:92%;background:#101A4A;border-radius:18px;overflow:hidden;">
+        <tr>
+          <td style="padding:30px 34px 8px 34px;">
+            <div style="font-size:24px;font-weight:800;letter-spacing:1px;color:#ffffff;text-transform:uppercase;">
+              CALLED&nbsp;IT<span style="color:#FFD34D;">.</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:14px 34px 0 34px;">
+            <div style="font-size:30px;line-height:1.15;font-weight:800;color:#FFD34D;text-transform:uppercase;">
+              One tap and<br>you&rsquo;re in.
+            </div>
+            <p style="margin:16px 0 0 0;font-size:15px;line-height:1.6;color:#B9C2EA;">
+              Tap below to sign in to <strong style="color:#fff;">CALLED IT.</strong> and pick up exactly where you left off &mdash; your six, your leagues and your score, on any device.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:26px 34px 8px 34px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:12px;background:#FFD34D;">
+                  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}"
+                     style="display:inline-block;padding:15px 34px;font-size:16px;font-weight:800;letter-spacing:1px;color:#101A4A;text-decoration:none;text-transform:uppercase;border-radius:12px;">
+                    Sign me in &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:14px 34px 0 34px;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#8E9AD6;">
+              Or paste this link into your browser:<br>
+              <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}" style="color:#FFD34D;word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 34px 30px 34px;border-top:1px solid rgba(255,255,255,0.08);margin-top:20px;">
+            <p style="margin:18px 0 0 0;font-size:11px;line-height:1.6;color:#5D6796;">
+              Didn&rsquo;t request this? You can safely ignore this email &mdash; no changes will be made.<br><br>
+              CALLED IT. &middot; World Cup 2026 predictions. Not affiliated with FIFA or any team.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
