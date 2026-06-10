@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ensureProfile, type Profile } from "@/lib/profile";
+import { signInWithEmail } from "@/lib/auth";
 import type { Team } from "@/lib/types";
 
 const CARDS = [
@@ -44,6 +45,20 @@ export default function Onboarding({
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Returning-player sign-in (magic link).
+  const [signinOpen, setSigninOpen] = useState(false);
+  const [signinEmail, setSigninEmail] = useState("");
+  const [signinSent, setSigninSent] = useState(false);
+  const sendSignin = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signinEmail.trim())) return;
+    try {
+      await signInWithEmail(signinEmail);
+      setSigninSent(true);
+    } catch {
+      setSigninSent(true); // don't leak whether the email exists
+    }
+  };
 
   // Teams are readable by the anon role, so we can load them before sign-in.
   useEffect(() => {
@@ -210,6 +225,29 @@ export default function Onboarding({
           </Link>
           .
         </p>
+
+        {signinSent ? (
+          <p className="footnote">📩 Check your inbox for a sign-in link.</p>
+        ) : signinOpen ? (
+          <div className="signin-inline">
+            <input
+              className="search"
+              type="email"
+              inputMode="email"
+              placeholder="Email you saved with"
+              value={signinEmail}
+              onChange={(e) => setSigninEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendSignin()}
+            />
+            <button className="tab" onClick={sendSignin}>
+              Send link
+            </button>
+          </div>
+        ) : (
+          <button className="save-skip" onClick={() => setSigninOpen(true)}>
+            Already playing? Sign in →
+          </button>
+        )}
       </main>
     </div>
   );

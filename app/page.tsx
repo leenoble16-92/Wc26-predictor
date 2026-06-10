@@ -20,6 +20,7 @@ import RoundView from "@/components/RoundView";
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(true);
 
   const [data, setData] = useState<RefData | null>(null);
   const [mults, setMults] = useState<MultMaps | null>(null);
@@ -32,6 +33,9 @@ export default function Home() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "round" || t === "league" || t === "global" || t === "results") setTab(t);
     const supabase = createClient();
+    supabase.auth
+      .getUser()
+      .then(({ data }) => setIsAnonymous(data.user?.is_anonymous ?? true));
     getMyProfile(supabase)
       .then(setProfile)
       .catch(() => setProfile(null))
@@ -109,7 +113,7 @@ export default function Home() {
   );
 
   return (
-    <AppShell tab={tab} onTab={setTab}>
+    <AppShell tab={tab} onTab={setTab} isAnonymous={isAnonymous}>
       {tab === "album" && (
         <Album
           data={data}

@@ -1,6 +1,7 @@
 "use client";
 
 import Header from "./Header";
+import SaveAccount from "./SaveAccount";
 
 export type Tab = "album" | "round" | "league" | "global" | "results";
 
@@ -16,14 +17,17 @@ export default function AppShell({
   tab,
   onTab,
   children,
+  isAnonymous,
 }: {
   tab: Tab;
   onTab: (t: Tab) => void;
   children: React.ReactNode;
+  isAnonymous: boolean;
 }) {
   return (
     <div className="app">
       <Header />
+      <SaveAccount isAnonymous={isAnonymous} />
       <div className="shell-body">{children}</div>
       <nav className="bottom-nav">
         {NAV.map(([id, icon, label]) => (
