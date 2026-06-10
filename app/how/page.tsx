@@ -114,7 +114,11 @@ export default function HowItWorks() {
           MAKE YOUR SIX →
         </Link>
       </main>
-      <footer className="ftr">CALLED IT. · World Cup 2026</footer>
+      <footer className="ftr">
+        <Link href="/legal" className="ftr-link">
+          Terms · Privacy · Disclaimer
+        </Link>
+      </footer>
     </div>
   );
 }

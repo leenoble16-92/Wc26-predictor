@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ensureProfile, type Profile } from "@/lib/profile";
 import type { Team } from "@/lib/types";
@@ -198,6 +199,16 @@ export default function Onboarding({
         {error && <p className="onboard-error">{error}</p>}
         <p className="footnote">
           One tap and you&apos;re in. You can add an email later to save your game.
+          <br />
+          By playing you agree to our{" "}
+          <Link href="/legal#terms" className="legal-link-inline">
+            Terms
+          </Link>{" "}
+          &amp;{" "}
+          <Link href="/legal#privacy" className="legal-link-inline">
+            Privacy
+          </Link>
+          .
         </p>
       </main>
     </div>
