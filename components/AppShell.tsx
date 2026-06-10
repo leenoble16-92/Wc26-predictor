@@ -1,9 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import Header from "./Header";
 
 export type Tab = "album" | "round" | "league" | "global" | "results";
+
+const NAV: [Tab, string, string][] = [
+  ["album", "🎴", "My Six"],
+  ["round", "🎯", "Round"],
+  ["league", "🏆", "League"],
+  ["global", "🌍", "Global"],
+  ["results", "📅", "Fixtures"],
+];
 
 export default function AppShell({
   tab,
@@ -17,32 +24,19 @@ export default function AppShell({
   return (
     <div className="app">
       <Header />
-      <nav className="tabs">
-        {(
-          [
-            ["album", "My six"],
-            ["round", "Round"],
-            ["league", "League"],
-            ["global", "Global"],
-            ["results", "Results"],
-          ] as [Tab, string][]
-        ).map(([id, label]) => (
+      <div className="shell-body">{children}</div>
+      <nav className="bottom-nav">
+        {NAV.map(([id, icon, label]) => (
           <button
             key={id}
-            className={`tab ${tab === id ? "on" : ""}`}
+            className={`nav-item ${tab === id ? "on" : ""}`}
             onClick={() => onTab(id)}
           >
-            {label}
+            <span className="nav-icon">{icon}</span>
+            <span className="nav-label">{label}</span>
           </button>
         ))}
       </nav>
-      {children}
-      <footer className="ftr">
-        <Link href="/how" className="ftr-link">
-          How points work
-        </Link>{" "}
-        · picks lock at the first whistle
-      </footer>
     </div>
   );
 }

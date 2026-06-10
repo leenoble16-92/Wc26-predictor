@@ -15,16 +15,14 @@ interface ResultItem {
 const fmtStage = (s: string) =>
   s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", {
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
-};
 
 export default function ResultsView({ teamFlags }: { teamFlags: Map<string, string> }) {
   const [matches, setMatches] = useState<ResultItem[] | null>(null);
@@ -39,39 +37,39 @@ export default function ResultsView({ teamFlags }: { teamFlags: Map<string, stri
   const flag = (tla: string | null) => (tla ? teamFlags.get(tla) ?? "🏳️" : "🏳️");
 
   const now = Date.now();
-  const finished = (matches ?? []).filter((m) => m.score).slice(-12).reverse();
+  const finished = (matches ?? []).filter((m) => m.score).slice(-15).reverse();
   const upcoming = (matches ?? [])
     .filter((m) => !m.score && +new Date(m.utcDate) >= now)
-    .slice(0, 12);
+    .slice(0, 15);
 
-  const Row = ({ m, live }: { m: ResultItem; live: boolean }) => (
-    <div className="match-row">
-      <div className="match-side">
-        <span className="match-flag">{flag(m.home.tla)}</span>
-        <span className="match-team">{m.home.name}</span>
+  const Card = ({ m }: { m: ResultItem }) => {
+    const homeWon = m.score && m.score.home > m.score.away;
+    const awayWon = m.score && m.score.away > m.score.home;
+    return (
+      <div className="fix-card">
+        <div className="fix-meta">
+          <span>{fmtDate(m.utcDate)}</span>
+          {m.score ? <span className="fix-ft">FT</span> : <span className="fix-stage">{fmtStage(m.stage)}</span>}
+        </div>
+        <div className={`fix-team ${homeWon ? "won" : ""}`}>
+          <span className="fix-flag">{flag(m.home.tla)}</span>
+          <span className="fix-name">{m.home.name}</span>
+          {m.score && <span className="fix-score">{m.score.home}</span>}
+        </div>
+        <div className={`fix-team ${awayWon ? "won" : ""}`}>
+          <span className="fix-flag">{flag(m.away.tla)}</span>
+          <span className="fix-name">{m.away.name}</span>
+          {m.score && <span className="fix-score">{m.score.away}</span>}
+        </div>
       </div>
-      <div className="match-mid">
-        {m.score ? (
-          <span className="match-score">
-            {m.score.home}–{m.score.away}
-          </span>
-        ) : (
-          <span className="match-time">{fmtDate(m.utcDate)}</span>
-        )}
-      </div>
-      <div className="match-side right">
-        <span className="match-team">{m.away.name}</span>
-        <span className="match-flag">{flag(m.away.tla)}</span>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <main className="main">
       <h1 className="headline small">
-        RECENT
-        <br />
-        <span className="headline-accent">RESULTS.</span>
+        RESULTS &amp;<br />
+        <span className="headline-accent">FIXTURES.</span>
       </h1>
 
       {matches === null ? (
@@ -81,29 +79,25 @@ export default function ResultsView({ teamFlags }: { teamFlags: Map<string, stri
           {finished.length > 0 && (
             <>
               <div className="results-head">LATEST RESULTS</div>
-              <div className="match-list">
+              <div className="fix-list">
                 {finished.map((m) => (
-                  <Row key={m.id} m={m} live={false} />
+                  <Card key={m.id} m={m} />
                 ))}
               </div>
             </>
           )}
-
           {upcoming.length > 0 && (
             <>
               <div className="results-head">UP NEXT · {fmtStage(upcoming[0].stage)}</div>
-              <div className="match-list">
+              <div className="fix-list">
                 {upcoming.map((m) => (
-                  <Row key={m.id} m={m} live />
+                  <Card key={m.id} m={m} />
                 ))}
               </div>
             </>
           )}
-
           {finished.length === 0 && upcoming.length === 0 && (
-            <p className="note">
-              No fixtures to show yet — the schedule lands as the World Cup nears.
-            </p>
+            <p className="note">No fixtures to show yet — the schedule lands as the World Cup nears.</p>
           )}
         </>
       )}

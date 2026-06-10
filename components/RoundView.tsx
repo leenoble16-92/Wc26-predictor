@@ -54,6 +54,33 @@ export default function RoundView({
   );
   const [activeCat, setActiveCat] = useState<RoundCategory | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [nextOpp, setNextOpp] = useState<Map<string, { name: string; tla: string | null; date: string }>>(
+    new Map()
+  );
+
+  // Next fixture per team (to show alongside round picks).
+  useEffect(() => {
+    fetch("/api/results")
+      .then((r) => r.json())
+      .then((d) => {
+        const map = new Map<string, { name: string; tla: string | null; date: string }>();
+        const now = Date.now();
+        for (const m of (d.matches ?? []) as {
+          status: string;
+          utcDate: string;
+          home: { name: string; tla: string | null };
+          away: { name: string; tla: string | null };
+        }[]) {
+          if (m.status === "FINISHED" || +new Date(m.utcDate) < now) continue;
+          if (m.home.tla && !map.has(m.home.tla))
+            map.set(m.home.tla, { name: m.away.name, tla: m.away.tla, date: m.utcDate });
+          if (m.away.tla && !map.has(m.away.tla))
+            map.set(m.away.tla, { name: m.home.name, tla: m.home.tla, date: m.utcDate });
+        }
+        setNextOpp(map);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -96,12 +123,31 @@ export default function RoundView({
 
   const resolved = rounds.filter((r) => r.status === "resolved" || r.best_team || r.top_scorer);
 
+  // Annotate the pool with each entity's next opponent.
+  const augmentPool = (catId: RoundCategoryId): PickEntity[] => {
+    const fmt = (iso: string) =>
+      new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    return poolForRoundCategory(catId, data).map((e) => {
+      let tla: string | null = null;
+      if (e.type === "team") tla = e.entityId;
+      else tla = data.playerById.get(Number(e.entityId))?.team_id ?? null;
+      const n = tla ? nextOpp.get(tla) : undefined;
+      if (!n) return e;
+      const oppFlag = n.tla ? data.teamById.get(n.tla)?.flag ?? "" : "";
+      const sub =
+        e.type === "team"
+          ? `Next: vs ${oppFlag} ${n.name} · ${fmt(n.date)}`
+          : `${e.sub.split(" · ")[0]} · vs ${n.name}`;
+      return { ...e, sub };
+    });
+  };
+
   if (activeCat && round) {
     return (
       <main className="main">
         <Picker
           cat={activeCat}
-          pool={poolForRoundCategory(activeCat.id, data)}
+          pool={augmentPool(activeCat.id)}
           mults={mults.get(activeCat.id) ?? new Map()}
           selectedId={picks[activeCat.id]?.entityId ?? null}
           onPick={(e) => onPick(activeCat.id, e)}

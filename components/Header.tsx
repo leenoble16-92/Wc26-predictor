@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { KICKOFF } from "@/lib/constants";
 
 function useCountdown(target: number) {
@@ -24,8 +25,13 @@ export default function Header() {
   const cd = useCountdown(KICKOFF.getTime());
   return (
     <header className="hdr">
-      <div className="brand">
-        CALLED IT<span className="brand-mark">.</span>
+      <div className="brand-wrap">
+        <div className="brand">
+          CALLED IT<span className="brand-mark">.</span>
+        </div>
+        <Link href="/how" className="how-link">
+          How it works ›
+        </Link>
       </div>
       <div className="countdown">
         <span className="cd-label">PICKS LOCK AT KICKOFF</span>
