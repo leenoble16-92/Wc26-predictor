@@ -171,8 +171,9 @@ export default function Onboarding({
     }
   };
 
-  // Name + a favourite team are required (team puts you in a fan leaderboard).
-  const canSubmit = name.trim().length >= 2 && !!favTeam && !busy;
+  // Name, a valid email, and a favourite team are all required.
+  const canSubmit =
+    name.trim().length >= 2 && emailValid && !!favTeam && !busy;
   const teamMatches = teamQuery
     ? teams.filter((t) => t.name.toLowerCase().includes(teamQuery.toLowerCase()))
     : [];
@@ -264,7 +265,7 @@ export default function Onboarding({
         />
 
         <label className="onboard-label" htmlFor="email" style={{ marginTop: 16 }}>
-          EMAIL <span className="opt">(SAVE YOUR GAME)</span>
+          YOUR EMAIL
         </label>
         <input
           id="email"
