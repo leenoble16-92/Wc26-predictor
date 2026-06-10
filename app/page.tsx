@@ -15,6 +15,7 @@ import AppShell, { type Tab } from "@/components/AppShell";
 import LeagueView from "@/components/LeagueView";
 import GlobalView from "@/components/GlobalView";
 import ResultsView from "@/components/ResultsView";
+import FavouriteTeamPrompt from "@/components/FavouriteTeamPrompt";
 import RoundView from "@/components/RoundView";
 
 export default function Home() {
@@ -115,16 +116,25 @@ export default function Home() {
   return (
     <AppShell tab={tab} onTab={setTab} isAnonymous={isAnonymous}>
       {tab === "album" && (
-        <Album
-          data={data}
-          mults={mults}
-          picks={picks}
-          onPick={onPick}
-          locked={locked}
-          onLock={onLock}
-          handle={profile.handle}
-          displayName={profile.display_name}
-        />
+        <>
+          {!profile.favourite_team && (
+            <FavouriteTeamPrompt
+              teams={data.teams}
+              userId={profile.id}
+              onSet={(id) => setProfile({ ...profile, favourite_team: id })}
+            />
+          )}
+          <Album
+            data={data}
+            mults={mults}
+            picks={picks}
+            onPick={onPick}
+            locked={locked}
+            onLock={onLock}
+            handle={profile.handle}
+            displayName={profile.display_name}
+          />
+        </>
       )}
       {tab === "round" && <RoundView userId={profile.id} data={data} />}
       {tab === "league" && <LeagueView userId={profile.id} teamFlags={teamFlags} />}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ensureProfile, type Profile } from "@/lib/profile";
-import { signInWithEmail } from "@/lib/auth";
+import { signInWithEmail, saveGameEmail } from "@/lib/auth";
 import type { Team } from "@/lib/types";
 
 type Visual = "six" | "tiers" | "round" | "fixture" | "points" | "leagues";
@@ -111,6 +111,7 @@ export default function Onboarding({
   const touchX = useRef(0);
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
   const [favTeam, setFavTeam] = useState<Team | null>(null);
   const [teamQuery, setTeamQuery] = useState("");
@@ -141,12 +142,23 @@ export default function Onboarding({
       .then(({ data }) => setTeams((data as Team[]) ?? []));
   }, []);
 
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const submit = async () => {
     if (busy) return;
     setError(null);
     setBusy(true);
     try {
       const profile = await ensureProfile(createClient(), name, favTeam?.id ?? null);
+      // If they gave an email, attach it now so the account is saved from the
+      // off (sends a confirmation link). Best-effort — don't block entry.
+      if (emailValid) {
+        try {
+          await saveGameEmail(email);
+        } catch {
+          /* email save can be retried later via the banner */
+        }
+      }
       onReady(profile);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
@@ -159,7 +171,8 @@ export default function Onboarding({
     }
   };
 
-  const canSubmit = name.trim().length >= 2 && !busy;
+  // Name + a favourite team are required (team puts you in a fan leaderboard).
+  const canSubmit = name.trim().length >= 2 && !!favTeam && !busy;
   const teamMatches = teamQuery
     ? teams.filter((t) => t.name.toLowerCase().includes(teamQuery.toLowerCase()))
     : [];
@@ -250,8 +263,25 @@ export default function Onboarding({
           onChange={(e) => setName(e.target.value)}
         />
 
+        <label className="onboard-label" htmlFor="email" style={{ marginTop: 16 }}>
+          EMAIL <span className="opt">(SAVE YOUR GAME)</span>
+        </label>
+        <input
+          id="email"
+          className="search"
+          type="email"
+          inputMode="email"
+          placeholder="you@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <p className="email-hint">
+          We&apos;ll send you a link to confirm your account, no password needed.
+          We will never send you any spam.
+        </p>
+
         <label className="onboard-label" style={{ marginTop: 16 }}>
-          YOUR TEAM <span className="opt">(OPTIONAL)</span>
+          PICK YOUR TEAM
         </label>
         {favTeam ? (
           <button className="fav-chosen" onClick={() => setFavTeam(null)}>
@@ -300,8 +330,6 @@ export default function Onboarding({
 
         {error && <p className="onboard-error">{error}</p>}
         <p className="footnote">
-          One tap and you&apos;re in. You can add an email later to save your game.
-          <br />
           By playing you agree to our{" "}
           <Link href="/legal#terms" className="legal-link-inline">
             Terms

@@ -351,7 +351,8 @@
 }
 .onboard-intro { font-size: 14px; line-height: 1.55; color: #B9C2EA; margin-bottom: 26px; max-width: 34ch; }
 .onboard-label { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: 1.5px; color: #B9C2EA; margin-bottom: 8px; }
-.onboard-label .opt { color: #5D6796; font-weight: 700; }
+.onboard-label .opt { color: #FFD34D; font-weight: 700; }
+.email-hint { font-size: 11px; line-height: 1.5; color: #8E9AD6; margin: 8px 0 0; }
 .onboard-error { color: #FF5C7A; font-size: 12.5px; margin-top: 10px; font-weight: 600; }
 .loading { display: flex; min-height: 60vh; align-items: center; justify-content: center; color: #8E9AD6; font-size: 13px; letter-spacing: 1px; }
 
