@@ -2,9 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
 
-const siteUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "https://calleditwc26.vercel.app";
+// Prefer an explicit production URL (set NEXT_PUBLIC_SITE_URL in Vercel to
+// https://calleditwc26.app once DNS is live), else the Vercel deployment URL.
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://calleditwc26.vercel.app");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
