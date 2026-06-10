@@ -309,6 +309,7 @@
 .save-p { font-size: 13px; line-height: 1.55; color: #B9C2EA; margin-bottom: 14px; }
 .save-p strong { color: #fff; }
 .save-card .search { margin-bottom: 10px; }
+.save-consent { font-size: 10.5px; line-height: 1.5; color: #8E9AD6; margin-top: 12px; }
 .save-skip { background: none; border: none; color: #8E9AD6; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 12px; font-family: inherit; text-decoration: underline; }
 .signin-inline { display: flex; gap: 8px; margin-top: 12px; }
 .signin-inline .search { margin: 0; }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { saveGameEmail } from "@/lib/auth";
 
 export default function SaveAccount({ isAnonymous }: { isAnonymous: boolean }) {
@@ -77,6 +78,13 @@ export default function SaveAccount({ isAnonymous }: { isAnonymous: boolean }) {
                   {busy ? "SENDING…" : "SEND MY LINK"}
                 </button>
                 {error && <p className="onboard-error">{error}</p>}
+                <p className="save-consent">
+                  By adding your email you agree to receive updates and marketing
+                  about CALLED IT. We&apos;ll never sell it. Unsubscribe any time.{" "}
+                  <Link href="/legal#privacy" className="legal-link-inline">
+                    Privacy
+                  </Link>
+                </p>
                 <button className="save-skip" onClick={() => setDismissed(true)}>
                   Not now
                 </button>

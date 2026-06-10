@@ -85,18 +85,25 @@ export default function LegalPage() {
           <li>Your <strong>picks, leagues and scores</strong>.</li>
           <li>An optional <strong>favourite team</strong>.</li>
           <li>
-            An optional <strong>email address</strong>, only if you choose to save
-            your account — used solely to sign you in.
+            An optional <strong>email address</strong>, if you choose to save your
+            account. We use it to <strong>sign you in</strong> and to send you{" "}
+            <strong>updates and marketing about CALLED IT.</strong> — new
+            features, your standings, and when the next round opens.
           </li>
         </ul>
         <p className="how-p">
-          We do <strong>not</strong> sell your data or use third-party advertising
-          trackers. Authentication and data storage are handled by{" "}
-          <strong>Supabase</strong> (our processor). Hosting is by{" "}
-          <strong>Vercel</strong>. You can request deletion of your account and
-          data any time by emailing{" "}
+          By saving your account with an email, you agree to receive these
+          updates. We will <strong>never sell your email or personal data</strong>,
+          and never share it with third parties for their own marketing. Every
+          marketing email has a one-tap unsubscribe, and you can opt out or
+          request deletion any time by emailing{" "}
           <a href={`mailto:${CONTACT}`} className="legal-link-inline">{CONTACT}</a>.
-          Under UK GDPR you have rights to access, correct and erase your data.
+        </p>
+        <p className="how-p">
+          We do <strong>not</strong> use third-party advertising trackers.
+          Authentication and data storage are handled by <strong>Supabase</strong>{" "}
+          (our processor); hosting is by <strong>Vercel</strong>. Under UK GDPR
+          you have rights to access, correct and erase your data.
         </p>
 
         <h2 id="cookies" className="how-h">COOKIES</h2>
