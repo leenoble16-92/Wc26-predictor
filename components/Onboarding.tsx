@@ -1,34 +1,105 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ensureProfile, type Profile } from "@/lib/profile";
 import { signInWithEmail } from "@/lib/auth";
 import type { Team } from "@/lib/types";
 
-const CARDS = [
+type Visual = "six" | "tiers" | "round" | "fixture" | "points" | "leagues";
+const CARDS: { kicker: string; title: string; body: string; visual: Visual }[] = [
   {
     kicker: "THE GAME",
     title: "SIX CALLS.",
-    body: "Make six predictions for the World Cup: Winner, Runner-up, Golden Boot, Player of the Tournament, Dark Horse and Biggest Flop.",
+    body: "Six predictions for the World Cup: Winner, Runner-up, Golden Boot, Player of the Tournament, Dark Horse and Biggest Flop.",
+    visual: "six",
   },
   {
     kicker: "RARITY = REWARD",
     title: "BE BOLD.",
-    body: "The fewer people who back your call, the rarer the sticker — Common, Rare, Epic, Legendary. Rarer picks carry a bigger multiplier. Your multipliers lock at the first whistle.",
+    body: "The fewer people who back your call, the rarer the sticker — and the bigger its multiplier. Multipliers freeze at the first whistle.",
+    visual: "tiers",
+  },
+  {
+    kicker: "EVERY ROUND · NEW",
+    title: "KEEP PLAYING.",
+    body: "Each round, bonus picks open: Team of the Round and Top Scorer. Quick calls, extra points, a reason to come back every few days.",
+    visual: "round",
+  },
+  {
+    kicker: "LIVE",
+    title: "FOLLOW IT ALL.",
+    body: "Every fixture and result in the app, updating as matches finish. Watch your calls come good in real time.",
+    visual: "fixture",
   },
   {
     kicker: "SCORING",
     title: "POINTS ADD UP.",
-    body: "Each call scores its base points × your locked multiplier. Points build through the tournament as results land, and the final settles the big ones.",
+    body: "Base points × your frozen multiplier. Points build as results land — provisional now, final by 19 July — and you climb the table.",
+    visual: "points",
   },
   {
     kicker: "LEAGUES",
     title: "BRING YOUR MATES.",
-    body: "Start a private league or join one with a 6-character code. Everyone's picks stay hidden until kickoff — then it's a live table. (Leagues land this week.)",
+    body: "Private leagues by 6-char code, a global leaderboard, and a filter to see where you rank among fellow fans of your team.",
+    visual: "leagues",
   },
 ];
+
+function CardVisual({ visual }: { visual: Visual }) {
+  if (visual === "six")
+    return (
+      <div className="ob-six">
+        {["WINNER", "RUNNER-UP", "GOLDEN BOOT", "BEST PLAYER", "DARK HORSE", "FLOP"].map((s) => (
+          <span key={s} className="ob-six-chip">{s}</span>
+        ))}
+      </div>
+    );
+  if (visual === "tiers")
+    return (
+      <div className="ob-tiers">
+        <span className="stk-tier common">COMMON</span>
+        <span className="stk-tier rare">RARE</span>
+        <span className="stk-tier epic">EPIC</span>
+        <span className="stk-tier legendary">LEGENDARY</span>
+      </div>
+    );
+  if (visual === "round")
+    return (
+      <div className="ob-hero">
+        <span className="ob-emoji">🎯</span>
+        <div className="ob-hero-rows">
+          <span>⚽ Team of the Round</span>
+          <span>👟 Top Scorer of the Round</span>
+        </div>
+      </div>
+    );
+  if (visual === "fixture")
+    return (
+      <div className="ob-fixture">
+        <div className="ob-fix-row"><span>🏴󠁧󠁢󠁥󠁮󠁧󠁿 England</span><b>2</b></div>
+        <div className="ob-fix-row dim"><span>🇫🇷 France</span><b>1</b></div>
+      </div>
+    );
+  if (visual === "points")
+    return (
+      <div className="ob-points">
+        <div className="ob-pt-row me"><span>1 ▲2 You</span><b>312</b></div>
+        <div className="ob-pt-row"><span>2 Woody</span><b>280</b></div>
+        <div className="ob-pt-row"><span>3 Dave</span><b>96</b></div>
+      </div>
+    );
+  return (
+    <div className="ob-hero">
+      <span className="ob-emoji">🏆</span>
+      <div className="ob-hero-rows">
+        <span>Private leagues · code GAZ26</span>
+        <span>🌍 Global · 🏴󠁧󠁢󠁥󠁮󠁧󠁿 England fans</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Onboarding({
   onReady,
@@ -37,6 +108,7 @@ export default function Onboarding({
 }) {
   const [card, setCard] = useState(0);
   const [step, setStep] = useState<"intro" | "details">("intro");
+  const touchX = useRef(0);
 
   const [name, setName] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
@@ -107,16 +179,33 @@ export default function Onboarding({
           </button>
         </header>
 
-        <main className="onboard">
+        <main
+          className="onboard"
+          onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            const dx = e.changedTouches[0].clientX - touchX.current;
+            if (dx < -45 && !last) setCard((n) => n + 1);
+            if (dx > 45 && card > 0) setCard((n) => n - 1);
+          }}
+        >
           <div className="intro-kicker">{c.kicker}</div>
           <h1 className="onboard-headline">
             <span className="headline-accent">{c.title}</span>
           </h1>
           <p className="onboard-intro">{c.body}</p>
 
+          <div className="ob-visual" key={card}>
+            <CardVisual visual={c.visual} />
+          </div>
+
           <div className="intro-dots">
             {CARDS.map((_, i) => (
-              <span key={i} className={`dot ${i === card ? "on" : ""}`} />
+              <button
+                key={i}
+                aria-label={`Card ${i + 1}`}
+                className={`dot ${i === card ? "on" : ""}`}
+                onClick={() => setCard(i)}
+              />
             ))}
           </div>
 
@@ -126,10 +215,8 @@ export default function Onboarding({
           >
             {last ? "GET STARTED" : "NEXT"}
           </button>
+          <p className="footnote">Swipe to explore · {card + 1} of {CARDS.length}</p>
         </main>
-        <footer className="ftr">
-          Real 48-team squads · picks lock at the first whistle
-        </footer>
       </div>
     );
   }

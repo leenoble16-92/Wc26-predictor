@@ -357,9 +357,29 @@
 /* Onboarding explainer carousel */
 .skip { background: none; border: none; color: #8E9AD6; font-weight: 800; font-size: 10.5px; letter-spacing: 1.5px; cursor: pointer; font-family: inherit; padding: 4px; }
 .intro-kicker { font-size: 10.5px; font-weight: 800; letter-spacing: 2px; color: #FFD34D; margin-bottom: 16px; }
-.intro-dots { display: flex; gap: 7px; margin: 28px 0 18px; }
-.dot { width: 7px; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.2); transition: all .2s; }
+.intro-dots { display: flex; gap: 7px; margin: 20px 0 18px; }
+.dot { width: 7px; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.2); transition: all .2s; border: none; padding: 0; cursor: pointer; }
 .dot.on { background: #FFD34D; width: 20px; }
+
+/* Onboarding card visuals */
+.ob-visual { margin: 22px 0 6px; animation: obIn .35s ease both; }
+@keyframes obIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ob-six { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ob-six-chip { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 8px; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: 1px; color: #B9C2EA; }
+.ob-tiers { display: flex; flex-wrap: wrap; gap: 8px; }
+.ob-tiers .stk-tier { font-size: 11px; padding: 7px 14px; }
+.ob-hero { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 16px; }
+.ob-emoji { font-size: 44px; line-height: 1; }
+.ob-hero-rows { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #fff; }
+.ob-fixture, .ob-points { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 8px 16px; }
+.ob-fix-row, .ob-pt-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; font-size: 15px; font-weight: 700; }
+.ob-fix-row b { font-family: 'Anton', sans-serif; color: #FFD34D; font-size: 20px; }
+.ob-fix-row.dim { color: #8E9AD6; }
+.ob-fix-row.dim b { color: #8E9AD6; }
+.ob-pt-row { font-size: 13.5px; border-top: 1px solid rgba(255,255,255,0.07); }
+.ob-pt-row:first-child { border-top: none; }
+.ob-pt-row b { font-family: 'Anton', sans-serif; color: #FFD34D; }
+.ob-pt-row.me { color: #fff; }
 
 /* Favourite-team selector (reuses .search / .pick-list / .pick-row) */
 .fav-list { max-height: 38vh; margin-top: 2px; }
