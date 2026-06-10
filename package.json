@@ -9,7 +9,8 @@
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
     "purge": "tsx scripts/purge.ts",
-    "preview": "tsx scripts/preview.ts"
+    "preview": "tsx scripts/preview.ts",
+    "seed:rounds": "tsx scripts/seedRounds.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",

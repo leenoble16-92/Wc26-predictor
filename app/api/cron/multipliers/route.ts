@@ -5,7 +5,7 @@
 // Service-role client lives here under app/api/cron/ — the only place (with
 // app/api/admin/) the hard rule permits SUPABASE_SERVICE_ROLE_KEY.
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { KICKOFF } from "@/lib/constants";
 import { multiplierFromPct } from "@/lib/multipliers";
 
@@ -90,11 +90,81 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // ---- Round picks: per-round rarity, frozen once a round locks ----
+  const roundsUpdated = await computeRoundStats(svc);
+
   return NextResponse.json({
     ok: true,
     status: past ? "frozen" : "recomputed",
     categories: counts.size,
     updated: rows.length,
     picksCounted: picks.length,
+    roundStats: roundsUpdated,
   });
+}
+
+async function computeRoundStats(svc: SupabaseClient): Promise<number> {
+  const { data: rounds } = await svc.from("rounds").select("id, locks_at");
+  const lockAt = new Map(
+    ((rounds ?? []) as { id: string; locks_at: string }[]).map((r) => [
+      r.id,
+      new Date(r.locks_at).getTime(),
+    ])
+  );
+  // Rounds already frozen — don't recompute.
+  const { data: frozenRows } = await svc
+    .from("round_stats")
+    .select("round_id")
+    .eq("frozen", true);
+  const frozenRounds = new Set(
+    ((frozenRows ?? []) as { round_id: string }[]).map((r) => r.round_id)
+  );
+
+  const { data: rp } = await svc
+    .from("round_picks")
+    .select("round_id, category, team_id, player_id")
+    .limit(20000);
+
+  // tally per round+category
+  const totals = new Map<string, number>();
+  const counts = new Map<string, Map<string, number>>();
+  for (const p of (rp ?? []) as {
+    round_id: string;
+    category: string;
+    team_id: string | null;
+    player_id: number | null;
+  }[]) {
+    if (frozenRounds.has(p.round_id)) continue;
+    const entity = p.team_id ?? (p.player_id != null ? String(p.player_id) : null);
+    if (!entity) continue;
+    const key = `${p.round_id}:${p.category}`;
+    totals.set(key, (totals.get(key) ?? 0) + 1);
+    const m = counts.get(key) ?? new Map<string, number>();
+    m.set(entity, (m.get(entity) ?? 0) + 1);
+    counts.set(key, m);
+  }
+
+  const now = Date.now();
+  const rows: Record<string, unknown>[] = [];
+  for (const [key, m] of counts) {
+    const [round_id, category] = key.split(":");
+    const total = totals.get(key) ?? 0;
+    const frozen = now >= (lockAt.get(round_id) ?? Infinity);
+    for (const [entity_id, c] of m) {
+      const pct = total ? (c / total) * 100 : 0;
+      rows.push({
+        round_id,
+        category,
+        entity_id,
+        pick_count: c,
+        pct: Math.round(pct * 10) / 10,
+        multiplier: multiplierFromPct(pct),
+        frozen,
+      });
+    }
+  }
+  if (rows.length) {
+    await svc.from("round_stats").upsert(rows, { onConflict: "round_id,category,entity_id" });
+  }
+  return rows.length;
 }

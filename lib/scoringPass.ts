@@ -4,7 +4,7 @@
 // client (the service-role key is only ever created in those two callers, so
 // this file references no secret).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CategoryId } from "./constants";
+import { type CategoryId, ROUND_BASE, type RoundCategoryId } from "./constants";
 import {
   computeScore,
   EMPTY_STATE,
@@ -80,6 +80,72 @@ async function readMultipliers(supabase: SupabaseClient) {
   return map;
 }
 
+/**
+ * Round-pick points per user: for each resolved round, ROUND_BASE × the round
+ * multiplier if the user's round pick matches the result (best_team /
+ * top_scorer). Returns a map user_id -> bonus points.
+ */
+async function roundPointsByUser(
+  supabase: SupabaseClient
+): Promise<Map<string, number>> {
+  const { data: rounds } = await supabase
+    .from("rounds")
+    .select("id, best_team, top_scorer");
+  const results = new Map<string, { team: string | null; scorer: string | null }>();
+  for (const r of (rounds ?? []) as {
+    id: string;
+    best_team: string | null;
+    top_scorer: number | null;
+  }[]) {
+    if (r.best_team || r.top_scorer != null) {
+      results.set(r.id, {
+        team: r.best_team,
+        scorer: r.top_scorer != null ? String(r.top_scorer) : null,
+      });
+    }
+  }
+  if (results.size === 0) return new Map();
+
+  // Round multipliers (frozen at round lock).
+  const { data: stats } = await supabase
+    .from("round_stats")
+    .select("round_id, category, entity_id, multiplier");
+  const mult = new Map<string, number>();
+  for (const s of (stats ?? []) as {
+    round_id: string;
+    category: string;
+    entity_id: string;
+    multiplier: number | null;
+  }[]) {
+    if (s.multiplier != null) mult.set(`${s.round_id}:${s.category}:${s.entity_id}`, s.multiplier);
+  }
+
+  const { data: picks } = await supabase
+    .from("round_picks")
+    .select("user_id, round_id, category, team_id, player_id")
+    .limit(20000);
+
+  const out = new Map<string, number>();
+  for (const p of (picks ?? []) as {
+    user_id: string;
+    round_id: string;
+    category: RoundCategoryId;
+    team_id: string | null;
+    player_id: number | null;
+  }[]) {
+    const res = results.get(p.round_id);
+    if (!res) continue;
+    const entity = p.team_id ?? (p.player_id != null ? String(p.player_id) : null);
+    if (!entity) continue;
+    const correct =
+      p.category === "round_team" ? res.team === entity : res.scorer === entity;
+    if (!correct) continue;
+    const m = mult.get(`${p.round_id}:${p.category}:${entity}`) ?? 1;
+    out.set(p.user_id, (out.get(p.user_id) ?? 0) + Math.round(ROUND_BASE[p.category] * m));
+  }
+  return out;
+}
+
 export interface ScoringPassResult {
   scored: number;
 }
@@ -88,10 +154,11 @@ export interface ScoringPassResult {
 export async function runScoringPass(
   supabase: SupabaseClient
 ): Promise<ScoringPassResult> {
-  const [state, pickRows, mults] = await Promise.all([
+  const [state, pickRows, mults, roundPts] = await Promise.all([
     readState(supabase),
     readAllPicks(supabase),
     readMultipliers(supabase),
+    roundPointsByUser(supabase),
   ]);
 
   // Group picks by user into ScoredPick[].
@@ -117,10 +184,14 @@ export async function runScoringPass(
     if (r.breakdown?.rank) prevRank.set(r.user_id, r.breakdown.rank);
   }
 
-  // Compute + rank.
-  const computed = [...byUser.entries()].map(([user_id, picks]) => {
-    const s = computeScore(picks, state);
-    return { user_id, ...s };
+  // Users to score = anyone with six-picks OR round-picks.
+  const userIds = new Set<string>([...byUser.keys(), ...roundPts.keys()]);
+
+  // Compute + rank (six points + resolved round bonus).
+  const computed = [...userIds].map((user_id) => {
+    const s = computeScore(byUser.get(user_id) ?? [], state);
+    const round = roundPts.get(user_id) ?? 0;
+    return { user_id, ...s, round, total: s.total + round };
   });
   computed.sort((a, b) => b.total - a.total);
 
@@ -134,6 +205,7 @@ export async function runScoringPass(
       breakdown: {
         final: c.finalPoints,
         provisional: c.provisionalPoints,
+        round: c.round,
         delta: pr ? pr - rank : 0,
         rank,
         categories: c.breakdown,

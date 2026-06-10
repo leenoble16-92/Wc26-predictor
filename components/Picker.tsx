@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Category } from "@/lib/constants";
+import type { EntityType } from "@/lib/constants";
 import type { PickEntity } from "@/lib/types";
 import type { EntityMultiplier } from "@/lib/multiplierMap";
 
@@ -13,7 +13,7 @@ export default function Picker({
   onPick,
   onBack,
 }: {
-  cat: Category;
+  cat: { label: string; short: string; type: EntityType; hint: string };
   pool: PickEntity[];
   mults: Map<string, EntityMultiplier>;
   selectedId: string | null;

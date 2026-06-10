@@ -15,6 +15,7 @@ import AppShell, { type Tab } from "@/components/AppShell";
 import LeagueView from "@/components/LeagueView";
 import GlobalView from "@/components/GlobalView";
 import ResultsView from "@/components/ResultsView";
+import RoundView from "@/components/RoundView";
 
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -29,7 +30,7 @@ export default function Home() {
   // Resolve the current profile on mount; honour ?tab= for deep links.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "league" || t === "global" || t === "results") setTab(t);
+    if (t === "round" || t === "league" || t === "global" || t === "results") setTab(t);
     const supabase = createClient();
     getMyProfile(supabase)
       .then(setProfile)
@@ -121,6 +122,7 @@ export default function Home() {
           displayName={profile.display_name}
         />
       )}
+      {tab === "round" && <RoundView userId={profile.id} data={data} />}
       {tab === "league" && <LeagueView userId={profile.id} teamFlags={teamFlags} />}
       {tab === "global" && (
         <GlobalView

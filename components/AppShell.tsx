@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Header from "./Header";
 
-export type Tab = "album" | "league" | "global" | "results";
+export type Tab = "album" | "round" | "league" | "global" | "results";
 
 export default function AppShell({
   tab,
@@ -21,6 +21,7 @@ export default function AppShell({
         {(
           [
             ["album", "My six"],
+            ["round", "Round"],
             ["league", "League"],
             ["global", "Global"],
             ["results", "Results"],

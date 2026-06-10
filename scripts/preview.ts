@@ -155,6 +155,52 @@ async function main() {
   ].map((r) => ({ ...r, updated_at: now }));
   await supabase.from("tournament_state").upsert(stateRows, { onConflict: "key" });
 
+  // --- Round picks demo: give everyone GROUP_1 round picks + resolve it ---
+  const { data: roundsData } = await supabase
+    .from("rounds")
+    .select("id")
+    .order("sort", { ascending: true })
+    .limit(1);
+  const roundId = roundsData?.[0]?.id;
+  if (roundId) {
+    const rpRows: Record<string, unknown>[] = [];
+    for (const c of created) {
+      rpRows.push(
+        { user_id: c.uid, round_id: roundId, category: "round_team", team_id: rand(allTeams).id, locked_at: now },
+        { user_id: c.uid, round_id: roundId, category: "round_scorer", player_id: rand(playerPool).id, locked_at: now }
+      );
+    }
+    await supabase.from("round_picks").upsert(rpRows, { onConflict: "user_id,round_id,category" });
+
+    // frozen round_stats + resolve to the most-picked entities
+    const rTot = new Map<string, number>();
+    const rCnt = new Map<string, Map<string, number>>();
+    for (const r of rpRows as { category: string; team_id?: string; player_id?: number }[]) {
+      const e = r.team_id ?? String(r.player_id);
+      const key = `${roundId}:${r.category}`;
+      rTot.set(key, (rTot.get(key) ?? 0) + 1);
+      const mm = rCnt.get(key) ?? new Map();
+      mm.set(e, (mm.get(e) ?? 0) + 1);
+      rCnt.set(key, mm);
+    }
+    const rStat: Record<string, unknown>[] = [];
+    const topOf = (cat: string) =>
+      [...(rCnt.get(`${roundId}:${cat}`)?.entries() ?? [])].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    for (const [key, mm] of rCnt) {
+      const [, category] = key.split(":");
+      const total = rTot.get(key) ?? 0;
+      for (const [entity_id, c] of mm) {
+        const pct = total ? (c / total) * 100 : 0;
+        rStat.push({ round_id: roundId, category, entity_id, pick_count: c, pct: Math.round(pct * 10) / 10, multiplier: multiplierFromPct(pct), frozen: true });
+      }
+    }
+    await supabase.from("round_stats").upsert(rStat, { onConflict: "round_id,category,entity_id" });
+    await supabase
+      .from("rounds")
+      .update({ status: "resolved", best_team: topOf("round_team"), top_scorer: Number(topOf("round_scorer")) || null })
+      .eq("id", roundId);
+  }
+
   // --- Demo league ---
   const { data: league } = await supabase
     .from("leagues")
